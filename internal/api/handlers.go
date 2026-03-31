@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"whatsbridge/internal/auth"
 	"whatsbridge/internal/bot"
 	"whatsbridge/internal/db"
 	"time"
@@ -313,10 +314,17 @@ func DisconnectHandler(w http.ResponseWriter, r *http.Request) {
 
 // RequireAPIKey middleware checks for a valid Bearer token.
 // If no API keys are configured, all requests pass through (open mode).
+// Also allows requests with a valid dashboard session cookie.
 func RequireAPIKey(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// If no API keys exist, allow all (backward compatible open mode)
 		if !db.HasAnyAPIKeys() {
+			next(w, r)
+			return
+		}
+
+		// Check for valid dashboard session cookie first
+		if auth.IsSessionValid(r) {
 			next(w, r)
 			return
 		}

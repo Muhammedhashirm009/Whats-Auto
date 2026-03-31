@@ -251,3 +251,18 @@ func RequireAuthAPI(next http.HandlerFunc) http.HandlerFunc {
 		next(w, r)
 	}
 }
+
+// IsSessionValid checks if the request has a valid session cookie (no side effects).
+// Used by RequireAPIKey to allow dashboard users through API endpoints.
+func IsSessionValid(r *http.Request) bool {
+	cookie, err := r.Cookie("wb_session")
+	if err != nil {
+		return false
+	}
+
+	sessionsMu.RLock()
+	sess, ok := sessions[cookie.Value]
+	sessionsMu.RUnlock()
+
+	return ok && time.Now().Before(sess.ExpiresAt)
+}
