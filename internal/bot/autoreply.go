@@ -75,7 +75,7 @@ func ProcessIncomingMessage(senderJID types.JID, messageText string) {
 	for _, rule := range rules {
 		if matchRule(rule, msgLower) {
 			log.Printf("AutoReply: rule '%s' matched for sender %s", rule.Name, senderJID.User)
-			sendAutoReply(senderJID.User, rule)
+			sendAutoReply(senderJID, rule)
 			return // First match wins
 		}
 	}
@@ -108,8 +108,8 @@ func matchRule(rule db.AutoReply, msgLower string) bool {
 	}
 }
 
-// sendAutoReply dispatches the reply (text or media) to the sender.
-func sendAutoReply(phone string, rule db.AutoReply) {
+// sendAutoReply dispatches the reply (text or media) to the sender using their full JID.
+func sendAutoReply(senderJID types.JID, rule db.AutoReply) {
 	if GlobalClient == nil || !GlobalClient.IsConnected() || !GlobalClient.IsLoggedIn() {
 		log.Println("AutoReply: bot not connected, skipping reply")
 		return
@@ -118,21 +118,21 @@ func sendAutoReply(phone string, rule db.AutoReply) {
 	// If rule has a media URL, download and send as media
 	if rule.MediaURL != "" {
 		go func() {
-			err := sendAutoReplyMedia(phone, rule)
+			err := sendAutoReplyMedia(senderJID.User, rule)
 			if err != nil {
 				log.Printf("AutoReply: media send failed for rule '%s': %v", rule.Name, err)
 				// Fallback to text if media fails and there's reply text
 				if rule.ReplyText != "" {
-					SendTextMessage(phone, rule.ReplyText)
+					SendTextMessageToJID(senderJID, rule.ReplyText)
 				}
 			}
 		}()
 		return
 	}
 
-	// Send text reply
+	// Send text reply using the original JID (preserves @lid or @s.whatsapp.net)
 	if rule.ReplyText != "" {
-		err := SendTextMessage(phone, rule.ReplyText)
+		err := SendTextMessageToJID(senderJID, rule.ReplyText)
 		if err != nil {
 			log.Printf("AutoReply: text send failed for rule '%s': %v", rule.Name, err)
 		}

@@ -193,6 +193,22 @@ func SendTextMessage(to string, message string) error {
 	return err
 }
 
+// SendTextMessageToJID sends a text message directly using a full JID (preserves @lid or @s.whatsapp.net).
+func SendTextMessageToJID(jid types.JID, message string) error {
+	if !IsInternetAvailable() {
+		return fmt.Errorf("no internet connection")
+	}
+	if GlobalClient == nil {
+		return fmt.Errorf("client not connected")
+	}
+
+	_, err := GlobalClient.SendMessage(context.Background(), jid, &waProto.Message{
+		Conversation: proto.String(message),
+	})
+	db.LogMessageUsage(err == nil)
+	return err
+}
+
 func SendMediaMessage(to string, filePath string, caption string) error {
 	if !IsInternetAvailable() {
 		return fmt.Errorf("no internet connection")
