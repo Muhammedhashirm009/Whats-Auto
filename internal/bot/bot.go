@@ -47,20 +47,7 @@ func EventHandler(evt interface{}) {
 		}
 
 		if msgText != "" {
-			senderPhone := v.Info.Sender.User
-			fmt.Printf("Received a message from %s: %s\n", senderPhone, msgText)
-
-			// Save incoming message to DB (skip own messages and groups)
-			if v.Info.Sender.Server != types.GroupServer && v.Info.Chat.Server != types.GroupServer {
-				// Use Chat JID for the phone number — Sender may be a LID (Linked Identity)
-				// which differs from the actual phone. Chat JID always has the real phone.
-				chatPhone := v.Info.Chat.User
-				isOwnMessage := GlobalClient != nil && GlobalClient.Store.ID != nil && chatPhone == GlobalClient.Store.ID.User
-				if !isOwnMessage && chatPhone != "" {
-					db.SaveMessage(chatPhone, "in", msgText, "", "received")
-				}
-			}
-
+			fmt.Printf("Received a message from %s: %s\n", v.Info.Sender.User, msgText)
 			// Process auto-reply in background
 			go ProcessIncomingMessage(v.Info.Sender, msgText)
 		}
@@ -232,11 +219,6 @@ func SendTextMessage(to string, message string) error {
 		Conversation: proto.String(message),
 	})
 	go db.LogMessageUsage(err == nil)
-	status := "sent"
-	if err != nil {
-		status = "failed"
-	}
-	db.SaveMessage(phone, "out", message, "", status)
 	return err
 }
 
@@ -253,11 +235,6 @@ func SendTextMessageToJID(jid types.JID, message string) error {
 		Conversation: proto.String(message),
 	})
 	go db.LogMessageUsage(err == nil)
-	status := "sent"
-	if err != nil {
-		status = "failed"
-	}
-	db.SaveMessage(jid.User, "out", message, "", status)
 	return err
 }
 
