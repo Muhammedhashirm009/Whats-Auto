@@ -352,7 +352,8 @@ async function loadMessages(phone) {
         const res = await fetch(`/api/chat/history?phone=${phone}&limit=100`);
         const data = await res.json();
         if (data.success) {
-            renderMessages(data.messages || []);
+            localMessages = data.messages || [];
+            renderMessages(localMessages);
         }
     } catch(e) { console.error('Failed to load messages', e); }
 }
@@ -414,6 +415,8 @@ function renderMessages(msgs) {
 }
 
 // ─── Send Message ───────────────────────────────────────────
+let localMessages = []; // Track messages for instant rendering
+
 async function sendMessage() {
     const msgInput = document.getElementById('msg-input');
     const msg = msgInput.value.trim();
@@ -421,50 +424,54 @@ async function sendMessage() {
 
     msgInput.value = '';
 
-    // Optimistic render
+    // Optimistic: add to local array and render instantly
     const now = new Date();
-    const tempMsg = {
-        direction: 'out', body: msg, status: 'sending',
-        created_at: now.toISOString().replace('T',' ').substring(0,19)
-    };
-
-    const container = document.getElementById('messages-area');
     const time = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    container.innerHTML += `<div class="flex justify-end mb-1" id="temp-msg">
-        <div class="msg-out bg-[#d9fdd3] px-3 py-1.5 shadow-sm max-w-[75%]">
-            <p class="text-[13.5px] text-gray-900 leading-relaxed whitespace-pre-wrap">${escapeHtml(msg)}</p>
-            <div class="flex justify-end items-center gap-1 -mb-0.5 mt-0.5">
-                <span class="text-[10.5px] text-gray-500">${time}</span>
-                <span class="material-symbols-outlined text-[13px] text-gray-300 animate-spin">progress_activity</span>
-            </div>
-        </div>
-    </div>`;
-    container.scrollTop = container.scrollHeight;
+    const optimisticMsg = {
+        id: Date.now(), // temp id
+        direction: 'out', body: msg, status: 'sending',
+        created_at: now.toISOString().replace('T',' ').substring(0,19),
+        _time: time, _optimistic: true
+    };
+    localMessages.push(optimisticMsg);
+    renderMessages(localMessages);
 
-    try {
-        const res = await fetch('/api/send', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ to: currentPhone, message: msg }),
-        });
-        const data = await res.json();
-        // Reload messages to get the real saved state
-        await loadMessages(currentPhone);
-        await loadConversations();
-    } catch(e) {
-        await loadMessages(currentPhone);
-    }
+    // Fire-and-forget: don't block the UI
+    fetch('/api/send', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ to: currentPhone, message: msg }),
+    }).then(res => res.json()).then(data => {
+        // Update the optimistic message status
+        optimisticMsg.status = data.success ? 'sent' : 'failed';
+        optimisticMsg._optimistic = false;
+        renderMessages(localMessages);
+    }).catch(() => {
+        optimisticMsg.status = 'failed';
+        optimisticMsg._optimistic = false;
+        renderMessages(localMessages);
+    });
 }
 
 // ─── Message Polling ────────────────────────────────────────
 function startMessagePoll() {
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(async () => {
-        if (currentPhone) {
-            await loadMessages(currentPhone);
-            await loadConversations();
+        if (!currentPhone) return;
+        // Parallel fetch — don't block each other
+        const [msgRes, convRes] = await Promise.all([
+            fetch(`/api/chat/history?phone=${currentPhone}&limit=100`).then(r => r.json()).catch(() => null),
+            fetch('/api/chat/conversations').then(r => r.json()).catch(() => null),
+        ]);
+        if (msgRes?.success) {
+            localMessages = msgRes.messages || [];
+            renderMessages(localMessages);
         }
-    }, 5000);
+        if (convRes?.success) {
+            conversations = convRes.conversations || [];
+            renderConversationsList();
+        }
+    }, 3000);
 }
 
 // ─── Mobile Navigation ─────────────────────────────────────
