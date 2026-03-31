@@ -211,15 +211,44 @@ func BulkSendHandler(w http.ResponseWriter, r *http.Request) {
 
 func QRHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	bot.QRMutex.Lock()
-	defer bot.QRMutex.Unlock()
 
-	if bot.CurrentQR == "" {
-		json.NewEncoder(w).Encode(map[string]interface{}{"error": "No QR code available or already logged in"})
+	// Check bot state first
+	if bot.GlobalClient == nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":  "Bot not initialized yet",
+			"reason": "not_initialized",
+		})
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{"code": bot.CurrentQR})
+	if bot.GlobalClient.IsLoggedIn() {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":  "Already logged in — no QR needed",
+			"reason": "logged_in",
+		})
+		return
+	}
+
+	bot.QRMutex.Lock()
+	qr := bot.CurrentQR
+	bot.QRMutex.Unlock()
+
+	if qr == "" {
+		if !bot.GlobalClient.IsConnected() {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":  "Bot is connecting to WhatsApp servers...",
+				"reason": "connecting",
+			})
+		} else {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":  "Waiting for QR code generation...",
+				"reason": "waiting",
+			})
+		}
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{"code": qr})
 }
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {

@@ -110,6 +110,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let qrRetryCount = 0;
+    const QR_MAX_RETRIES = 3;
+
     async function fetchQR() {
         if (!loggedOutView || loggedOutView.classList.contains('hidden')) return;
 
@@ -118,26 +121,79 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
 
             if (data.code) {
+                // QR code received — render it
+                qrRetryCount = 0;
                 const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(data.code)}`;
-                qrImage.src = qrUrl;
-                qrDisplay.classList.remove('hidden');
-                qrLoading.classList.add('hidden');
-                qrError.classList.add('hidden');
-            } else {
-                if (!qrDisplay.classList.contains('hidden')) {
-                    // Keep current QR
-                } else {
+                
+                // Validate image loads before showing
+                const testImg = new Image();
+                testImg.onload = () => {
+                    qrImage.src = qrUrl;
+                    qrDisplay.classList.remove('hidden');
                     qrLoading.classList.add('hidden');
-                    qrError.classList.remove('hidden');
+                    qrError.classList.add('hidden');
+                };
+                testImg.onerror = () => {
+                    // External QR API failed — show error with context
+                    showQRError('QR service unavailable. Click retry or scan the QR from the server terminal.');
+                };
+                testImg.src = qrUrl;
+
+            } else if (data.reason) {
+                // Backend told us why there's no QR
+                switch (data.reason) {
+                    case 'logged_in':
+                        // Status poll should catch this, but force a status check
+                        checkStatus();
+                        break;
+                    case 'connecting':
+                        showQRLoading('Connecting to WhatsApp servers...');
+                        break;
+                    case 'not_initialized':
+                        showQRLoading('Initializing bot...');
+                        break;
+                    case 'waiting':
+                        showQRLoading('Generating QR code...');
+                        break;
+                    default:
+                        showQRLoading('Preparing...');
+                }
+            } else {
+                // Unknown response — keep loading for a few tries, then show error
+                qrRetryCount++;
+                if (qrRetryCount >= QR_MAX_RETRIES) {
+                    showQRError(data.error || 'Unable to generate QR code. Please check server logs.');
                 }
             }
         } catch (e) {
+            qrRetryCount++;
             console.error('Failed to fetch QR', e);
+            if (qrRetryCount >= QR_MAX_RETRIES) {
+                showQRError('Cannot reach server. Check your connection.');
+            }
         }
+    }
+
+    function showQRLoading(text) {
+        qrDisplay.classList.add('hidden');
+        qrError.classList.add('hidden');
+        qrLoading.classList.remove('hidden');
+        const loadingText = qrLoading.querySelector('p');
+        if (loadingText) loadingText.textContent = text || 'Generating QR Code...';
+    }
+
+    function showQRError(text) {
+        qrDisplay.classList.add('hidden');
+        qrLoading.classList.add('hidden');
+        qrError.classList.remove('hidden');
+        const errorText = qrError.querySelector('p');
+        if (errorText) errorText.textContent = text || 'Failed to load QR code';
     }
 
     function startQRPoll() {
         if (qrPollInterval) return;
+        qrRetryCount = 0;
+        showQRLoading('Generating QR Code...');
         fetchQR();
         qrPollInterval = setInterval(fetchQR, 5000);
     }
