@@ -32,9 +32,9 @@ func InitDB(dsn string) {
 
 	// Connection pool tuning for remote MySQL (reduces latency and prevents stalls)
 	LocalDB.SetMaxOpenConns(10)
-	LocalDB.SetMaxIdleConns(5)
-	LocalDB.SetConnMaxLifetime(5 * time.Minute)
-	LocalDB.SetConnMaxIdleTime(3 * time.Minute)
+	LocalDB.SetMaxIdleConns(3)
+	LocalDB.SetConnMaxLifetime(3 * time.Minute)
+	LocalDB.SetConnMaxIdleTime(30 * time.Second)
 
 	createTables()
 	log.Println("MySQL database initialized successfully.")
