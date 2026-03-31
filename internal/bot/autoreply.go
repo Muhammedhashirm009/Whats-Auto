@@ -60,8 +60,8 @@ func ProcessIncomingMessage(senderJID types.JID, messageText string) {
 		}
 	}
 
-	// Don't reply to group messages
-	if senderJID.Server != types.DefaultUserServer {
+	// Don't reply to group messages (groups use @g.us server)
+	if senderJID.Server == types.GroupServer {
 		return
 	}
 
