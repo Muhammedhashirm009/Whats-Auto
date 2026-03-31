@@ -85,8 +85,19 @@ func createTables() {
 			media_url VARCHAR(500),
 			media_filename VARCHAR(255),
 			match_mode VARCHAR(10) DEFAULT 'all',
+			rule_type VARCHAR(10) DEFAULT 'simple',
 			is_active TINYINT(1) DEFAULT 1,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);`,
+		`CREATE TABLE IF NOT EXISTS auto_reply_items (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			rule_id INT NOT NULL,
+			option_number INT NOT NULL,
+			label VARCHAR(200) NOT NULL,
+			reply_text TEXT,
+			media_url VARCHAR(500),
+			media_filename VARCHAR(255),
+			FOREIGN KEY (rule_id) REFERENCES auto_replies(id) ON DELETE CASCADE
 		);`,
 	}
 
@@ -96,6 +107,9 @@ func createTables() {
 			fmt.Printf("Error creating table: %v\n", err)
 		}
 	}
+
+	// Migration: add rule_type column if not present (for existing installs)
+	LocalDB.Exec(`ALTER TABLE auto_replies ADD COLUMN rule_type VARCHAR(10) DEFAULT 'simple'`)
 }
 
 func LogMessageUsage(success bool) {
@@ -291,17 +305,31 @@ type AutoReply struct {
 	MediaURL      string `json:"media_url"`
 	MediaFilename string `json:"media_filename"`
 	MatchMode     string `json:"match_mode"`
+	RuleType      string `json:"rule_type"`
 	IsActive      bool   `json:"is_active"`
 	CreatedAt     string `json:"created_at"`
 }
 
-func AddAutoReply(name, keywords, replyText, mediaURL, mediaFilename, matchMode string) (int64, error) {
+type AutoReplyItem struct {
+	ID            int    `json:"id"`
+	RuleID        int    `json:"rule_id"`
+	OptionNumber  int    `json:"option_number"`
+	Label         string `json:"label"`
+	ReplyText     string `json:"reply_text"`
+	MediaURL      string `json:"media_url"`
+	MediaFilename string `json:"media_filename"`
+}
+
+func AddAutoReply(name, keywords, replyText, mediaURL, mediaFilename, matchMode, ruleType string) (int64, error) {
 	if matchMode == "" {
 		matchMode = "all"
 	}
+	if ruleType == "" {
+		ruleType = "simple"
+	}
 	result, err := LocalDB.Exec(
-		`INSERT INTO auto_replies (name, keywords, reply_text, media_url, media_filename, match_mode) VALUES (?, ?, ?, ?, ?, ?)`,
-		name, keywords, replyText, mediaURL, mediaFilename, matchMode,
+		`INSERT INTO auto_replies (name, keywords, reply_text, media_url, media_filename, match_mode, rule_type) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		name, keywords, replyText, mediaURL, mediaFilename, matchMode, ruleType,
 	)
 	if err != nil {
 		return 0, err
@@ -310,7 +338,7 @@ func AddAutoReply(name, keywords, replyText, mediaURL, mediaFilename, matchMode 
 }
 
 func ListAutoReplies() ([]AutoReply, error) {
-	rows, err := LocalDB.Query(`SELECT id, name, keywords, IFNULL(reply_text,''), IFNULL(media_url,''), IFNULL(media_filename,''), match_mode, is_active, created_at FROM auto_replies ORDER BY id ASC`)
+	rows, err := LocalDB.Query(`SELECT id, name, keywords, IFNULL(reply_text,''), IFNULL(media_url,''), IFNULL(media_filename,''), match_mode, IFNULL(rule_type,'simple'), is_active, created_at FROM auto_replies ORDER BY id ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +348,7 @@ func ListAutoReplies() ([]AutoReply, error) {
 	for rows.Next() {
 		var r AutoReply
 		var createdStr string
-		if err := rows.Scan(&r.ID, &r.Name, &r.Keywords, &r.ReplyText, &r.MediaURL, &r.MediaFilename, &r.MatchMode, &r.IsActive, &createdStr); err != nil {
+		if err := rows.Scan(&r.ID, &r.Name, &r.Keywords, &r.ReplyText, &r.MediaURL, &r.MediaFilename, &r.MatchMode, &r.RuleType, &r.IsActive, &createdStr); err != nil {
 			continue
 		}
 		r.CreatedAt = createdStr
@@ -330,7 +358,7 @@ func ListAutoReplies() ([]AutoReply, error) {
 }
 
 func GetActiveAutoReplies() ([]AutoReply, error) {
-	rows, err := LocalDB.Query(`SELECT id, name, keywords, IFNULL(reply_text,''), IFNULL(media_url,''), IFNULL(media_filename,''), match_mode, is_active, created_at FROM auto_replies WHERE is_active = 1 ORDER BY id ASC`)
+	rows, err := LocalDB.Query(`SELECT id, name, keywords, IFNULL(reply_text,''), IFNULL(media_url,''), IFNULL(media_filename,''), match_mode, IFNULL(rule_type,'simple'), is_active, created_at FROM auto_replies WHERE is_active = 1 ORDER BY id ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +368,7 @@ func GetActiveAutoReplies() ([]AutoReply, error) {
 	for rows.Next() {
 		var r AutoReply
 		var createdStr string
-		if err := rows.Scan(&r.ID, &r.Name, &r.Keywords, &r.ReplyText, &r.MediaURL, &r.MediaFilename, &r.MatchMode, &r.IsActive, &createdStr); err != nil {
+		if err := rows.Scan(&r.ID, &r.Name, &r.Keywords, &r.ReplyText, &r.MediaURL, &r.MediaFilename, &r.MatchMode, &r.RuleType, &r.IsActive, &createdStr); err != nil {
 			continue
 		}
 		r.CreatedAt = createdStr
@@ -349,10 +377,13 @@ func GetActiveAutoReplies() ([]AutoReply, error) {
 	return rules, nil
 }
 
-func UpdateAutoReply(id int, name, keywords, replyText, mediaURL, mediaFilename, matchMode string, isActive bool) error {
+func UpdateAutoReply(id int, name, keywords, replyText, mediaURL, mediaFilename, matchMode, ruleType string, isActive bool) error {
+	if ruleType == "" {
+		ruleType = "simple"
+	}
 	_, err := LocalDB.Exec(
-		`UPDATE auto_replies SET name=?, keywords=?, reply_text=?, media_url=?, media_filename=?, match_mode=?, is_active=? WHERE id=?`,
-		name, keywords, replyText, mediaURL, mediaFilename, matchMode, isActive, id,
+		`UPDATE auto_replies SET name=?, keywords=?, reply_text=?, media_url=?, media_filename=?, match_mode=?, rule_type=?, is_active=? WHERE id=?`,
+		name, keywords, replyText, mediaURL, mediaFilename, matchMode, ruleType, isActive, id,
 	)
 	return err
 }
@@ -367,5 +398,59 @@ func DeleteAutoReply(id int) error {
 		return fmt.Errorf("auto-reply rule not found")
 	}
 	log.Printf("Auto-reply rule #%d deleted", id)
+	return nil
+}
+
+// ─── Menu Item Management ───────────────────────────────────
+
+func AddMenuItem(ruleID, optionNumber int, label, replyText, mediaURL, mediaFilename string) (int64, error) {
+	result, err := LocalDB.Exec(
+		`INSERT INTO auto_reply_items (rule_id, option_number, label, reply_text, media_url, media_filename) VALUES (?, ?, ?, ?, ?, ?)`,
+		ruleID, optionNumber, label, replyText, mediaURL, mediaFilename,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
+}
+
+func GetMenuItems(ruleID int) ([]AutoReplyItem, error) {
+	rows, err := LocalDB.Query(
+		`SELECT id, rule_id, option_number, label, IFNULL(reply_text,''), IFNULL(media_url,''), IFNULL(media_filename,'') FROM auto_reply_items WHERE rule_id = ? ORDER BY option_number ASC`,
+		ruleID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []AutoReplyItem
+	for rows.Next() {
+		var item AutoReplyItem
+		if err := rows.Scan(&item.ID, &item.RuleID, &item.OptionNumber, &item.Label, &item.ReplyText, &item.MediaURL, &item.MediaFilename); err != nil {
+			continue
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func UpdateMenuItem(id, optionNumber int, label, replyText, mediaURL, mediaFilename string) error {
+	_, err := LocalDB.Exec(
+		`UPDATE auto_reply_items SET option_number=?, label=?, reply_text=?, media_url=?, media_filename=? WHERE id=?`,
+		optionNumber, label, replyText, mediaURL, mediaFilename, id,
+	)
+	return err
+}
+
+func DeleteMenuItem(id int) error {
+	result, err := LocalDB.Exec(`DELETE FROM auto_reply_items WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("menu item not found")
+	}
 	return nil
 }

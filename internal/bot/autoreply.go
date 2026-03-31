@@ -7,21 +7,39 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"whatsbridge/internal/db"
 
 	"go.mau.fi/whatsmeow/types"
 )
 
-// In-memory cache of active auto-reply rules
+// ─── In-memory cache of active auto-reply rules ─────────────
+
 var (
 	autoReplyRules []db.AutoReply
 	autoReplyMu    sync.RWMutex
 )
 
-// LoadAutoReplyRules fetches active rules from MySQL and caches them.
+// ─── Conversation session tracking ──────────────────────────
+
+type menuSession struct {
+	RuleID    int
+	Items     []db.AutoReplyItem
+	ExpiresAt time.Time
+}
+
+var (
+	menuSessions   = make(map[string]*menuSession) // key: sender JID user
+	menuSessionsMu sync.RWMutex
+	sessionTTL     = 5 * time.Minute
+)
+
+// ─── Rule cache management ──────────────────────────────────
+
 func LoadAutoReplyRules() {
 	if db.LocalDB == nil {
 		log.Println("AutoReply: DB not ready, skipping rule load")
@@ -41,13 +59,12 @@ func LoadAutoReplyRules() {
 	log.Printf("AutoReply: loaded %d active rules", len(rules))
 }
 
-// RefreshAutoReplyCache reloads the rules from DB. Call after any CRUD operation.
 func RefreshAutoReplyCache() {
 	LoadAutoReplyRules()
 }
 
-// ProcessIncomingMessage checks the message against auto-reply rules and sends a reply if matched.
-// Should be called from EventHandler in a goroutine.
+// ─── Main incoming message processor ────────────────────────
+
 func ProcessIncomingMessage(senderJID types.JID, messageText string) {
 	if messageText == "" {
 		return
@@ -65,6 +82,41 @@ func ProcessIncomingMessage(senderJID types.JID, messageText string) {
 		return
 	}
 
+	senderKey := senderJID.User
+	msgTrimmed := strings.TrimSpace(messageText)
+
+	// Step 1: Check if sender has an active menu session
+	menuSessionsMu.RLock()
+	sess, hasSession := menuSessions[senderKey]
+	menuSessionsMu.RUnlock()
+
+	if hasSession && time.Now().Before(sess.ExpiresAt) {
+		// Try to match the message as a numbered option
+		optNum, err := strconv.Atoi(msgTrimmed)
+		if err == nil {
+			for _, item := range sess.Items {
+				if item.OptionNumber == optNum {
+					log.Printf("AutoReply: menu option %d selected by %s", optNum, senderKey)
+					// Clear session after selection
+					menuSessionsMu.Lock()
+					delete(menuSessions, senderKey)
+					menuSessionsMu.Unlock()
+					// Send the option's reply
+					sendMenuItemReply(senderJID, item)
+					return
+				}
+			}
+			// Number doesn't match any option — send "invalid option" hint
+			SendTextMessageToJID(senderJID, fmt.Sprintf("❌ Invalid option. Please reply with a number between 1 and %d.", len(sess.Items)))
+			return
+		}
+		// Not a number — clear session and fall through to normal matching
+		menuSessionsMu.Lock()
+		delete(menuSessions, senderKey)
+		menuSessionsMu.Unlock()
+	}
+
+	// Step 2: Normal keyword matching
 	autoReplyMu.RLock()
 	rules := make([]db.AutoReply, len(autoReplyRules))
 	copy(rules, autoReplyRules)
@@ -74,14 +126,20 @@ func ProcessIncomingMessage(senderJID types.JID, messageText string) {
 
 	for _, rule := range rules {
 		if matchRule(rule, msgLower) {
-			log.Printf("AutoReply: rule '%s' matched for sender %s", rule.Name, senderJID.User)
-			sendAutoReply(senderJID, rule)
+			log.Printf("AutoReply: rule '%s' (type=%s) matched for sender %s", rule.Name, rule.RuleType, senderKey)
+
+			if rule.RuleType == "menu" {
+				sendMenuReply(senderJID, rule)
+			} else {
+				sendSimpleReply(senderJID, rule)
+			}
 			return // First match wins
 		}
 	}
 }
 
-// matchRule checks if a message matches a rule's keywords.
+// ─── Keyword matching ───────────────────────────────────────
+
 func matchRule(rule db.AutoReply, msgLower string) bool {
 	keywords := strings.Split(rule.Keywords, ",")
 
@@ -108,20 +166,101 @@ func matchRule(rule db.AutoReply, msgLower string) bool {
 	}
 }
 
-// sendAutoReply dispatches the reply (text or media) to the sender using their full JID.
-func sendAutoReply(senderJID types.JID, rule db.AutoReply) {
+// ─── Menu reply: sends formatted menu + creates session ─────
+
+func sendMenuReply(senderJID types.JID, rule db.AutoReply) {
+	items, err := db.GetMenuItems(rule.ID)
+	if err != nil || len(items) == 0 {
+		log.Printf("AutoReply: menu rule '%s' has no items, skipping", rule.Name)
+		return
+	}
+
+	// Build formatted menu text
+	var sb strings.Builder
+	if rule.ReplyText != "" {
+		sb.WriteString(rule.ReplyText)
+		sb.WriteString("\n")
+	} else {
+		sb.WriteString(fmt.Sprintf("📋 *%s*\n", rule.Name))
+	}
+	sb.WriteString("━━━━━━━━━━━━━━━━━\n")
+	for _, item := range items {
+		sb.WriteString(fmt.Sprintf("%s %s\n", numberEmoji(item.OptionNumber), item.Label))
+	}
+	sb.WriteString("\n_Reply with a number to continue._")
+
+	// Send menu
+	err = SendTextMessageToJID(senderJID, sb.String())
+	if err != nil {
+		log.Printf("AutoReply: failed to send menu for rule '%s': %v", rule.Name, err)
+		return
+	}
+
+	// Create session
+	menuSessionsMu.Lock()
+	menuSessions[senderJID.User] = &menuSession{
+		RuleID:    rule.ID,
+		Items:     items,
+		ExpiresAt: time.Now().Add(sessionTTL),
+	}
+	menuSessionsMu.Unlock()
+
+	log.Printf("AutoReply: menu session started for %s (rule '%s', %d items, expires in %v)",
+		senderJID.User, rule.Name, len(items), sessionTTL)
+}
+
+// numberEmoji returns a number emoji like 1️⃣, 2️⃣, etc.
+func numberEmoji(n int) string {
+	digits := []string{"0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"}
+	if n >= 0 && n < len(digits) {
+		return digits[n]
+	}
+	return fmt.Sprintf("(%d)", n)
+}
+
+// ─── Menu item reply: handles selected option ───────────────
+
+func sendMenuItemReply(senderJID types.JID, item db.AutoReplyItem) {
+	if GlobalClient == nil || !GlobalClient.IsConnected() || !GlobalClient.IsLoggedIn() {
+		log.Println("AutoReply: bot not connected, skipping menu item reply")
+		return
+	}
+
+	// If item has a media URL, download and send
+	if item.MediaURL != "" {
+		go func() {
+			err := sendMediaFromURL(senderJID.User, item.MediaURL, item.MediaFilename, item.ReplyText)
+			if err != nil {
+				log.Printf("AutoReply: menu item media send failed: %v", err)
+				if item.ReplyText != "" {
+					SendTextMessageToJID(senderJID, item.ReplyText)
+				}
+			}
+		}()
+		return
+	}
+
+	if item.ReplyText != "" {
+		err := SendTextMessageToJID(senderJID, item.ReplyText)
+		if err != nil {
+			log.Printf("AutoReply: menu item text send failed: %v", err)
+		}
+	}
+}
+
+// ─── Simple reply (existing behavior) ───────────────────────
+
+func sendSimpleReply(senderJID types.JID, rule db.AutoReply) {
 	if GlobalClient == nil || !GlobalClient.IsConnected() || !GlobalClient.IsLoggedIn() {
 		log.Println("AutoReply: bot not connected, skipping reply")
 		return
 	}
 
-	// If rule has a media URL, download and send as media
 	if rule.MediaURL != "" {
 		go func() {
-			err := sendAutoReplyMedia(senderJID.User, rule)
+			err := sendMediaFromURL(senderJID.User, rule.MediaURL, rule.MediaFilename, rule.ReplyText)
 			if err != nil {
 				log.Printf("AutoReply: media send failed for rule '%s': %v", rule.Name, err)
-				// Fallback to text if media fails and there's reply text
 				if rule.ReplyText != "" {
 					SendTextMessageToJID(senderJID, rule.ReplyText)
 				}
@@ -130,7 +269,6 @@ func sendAutoReply(senderJID types.JID, rule db.AutoReply) {
 		return
 	}
 
-	// Send text reply using the original JID (preserves @lid or @s.whatsapp.net)
 	if rule.ReplyText != "" {
 		err := SendTextMessageToJID(senderJID, rule.ReplyText)
 		if err != nil {
@@ -139,9 +277,10 @@ func sendAutoReply(senderJID types.JID, rule db.AutoReply) {
 	}
 }
 
-// sendAutoReplyMedia downloads a file from URL and sends it.
-func sendAutoReplyMedia(phone string, rule db.AutoReply) error {
-	resp, err := http.Get(rule.MediaURL)
+// ─── Shared media helper ────────────────────────────────────
+
+func sendMediaFromURL(phone, mediaURL, mediaFilename, caption string) error {
+	resp, err := http.Get(mediaURL)
 	if err != nil {
 		return fmt.Errorf("failed to download media: %v", err)
 	}
@@ -156,7 +295,7 @@ func sendAutoReplyMedia(phone string, rule db.AutoReply) error {
 		return fmt.Errorf("failed to read media body: %v", err)
 	}
 
-	filename := rule.MediaFilename
+	filename := mediaFilename
 	if filename == "" {
 		filename = "attachment"
 	}
@@ -167,6 +306,5 @@ func sendAutoReplyMedia(phone string, rule db.AutoReply) error {
 	}
 	defer os.Remove(tmpFile)
 
-	caption := rule.ReplyText // Use reply_text as caption for media
 	return SendMediaMessage(phone, tmpFile, caption)
 }

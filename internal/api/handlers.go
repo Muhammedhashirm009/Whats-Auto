@@ -474,6 +474,7 @@ func AutoReplyCreateHandler(w http.ResponseWriter, r *http.Request) {
 		MediaURL      string `json:"media_url"`
 		MediaFilename string `json:"media_filename"`
 		MatchMode     string `json:"match_mode"`
+		RuleType      string `json:"rule_type"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" || req.Keywords == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -481,13 +482,14 @@ func AutoReplyCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ReplyText == "" && req.MediaURL == "" {
+	// Menu rules don't require reply_text/media_url (menu items provide responses)
+	if req.RuleType != "menu" && req.ReplyText == "" && req.MediaURL == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Either reply_text or media_url is required"})
 		return
 	}
 
-	id, err := db.AddAutoReply(req.Name, req.Keywords, req.ReplyText, req.MediaURL, req.MediaFilename, req.MatchMode)
+	id, err := db.AddAutoReply(req.Name, req.Keywords, req.ReplyText, req.MediaURL, req.MediaFilename, req.MatchMode, req.RuleType)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
@@ -513,6 +515,7 @@ func AutoReplyUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		MediaURL      string `json:"media_url"`
 		MediaFilename string `json:"media_filename"`
 		MatchMode     string `json:"match_mode"`
+		RuleType      string `json:"rule_type"`
 		IsActive      bool   `json:"is_active"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID == 0 {
@@ -521,7 +524,7 @@ func AutoReplyUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := db.UpdateAutoReply(req.ID, req.Name, req.Keywords, req.ReplyText, req.MediaURL, req.MediaFilename, req.MatchMode, req.IsActive)
+	err := db.UpdateAutoReply(req.ID, req.Name, req.Keywords, req.ReplyText, req.MediaURL, req.MediaFilename, req.MatchMode, req.RuleType, req.IsActive)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
@@ -549,6 +552,126 @@ func AutoReplyDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := db.DeleteAutoReply(req.ID); err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
+		return
+	}
+
+	bot.RefreshAutoReplyCache()
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true})
+}
+
+// ─── Menu Item Handlers ─────────────────────────────────────
+
+func MenuItemsListHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	ruleIDStr := r.URL.Query().Get("rule_id")
+	ruleID, err := strconv.Atoi(ruleIDStr)
+	if err != nil || ruleID == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Valid rule_id query parameter is required"})
+		return
+	}
+
+	items, err := db.GetMenuItems(ruleID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
+		return
+	}
+	if items == nil {
+		items = []db.AutoReplyItem{}
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "items": items})
+}
+
+func MenuItemCreateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	var req struct {
+		RuleID        int    `json:"rule_id"`
+		OptionNumber  int    `json:"option_number"`
+		Label         string `json:"label"`
+		ReplyText     string `json:"reply_text"`
+		MediaURL      string `json:"media_url"`
+		MediaFilename string `json:"media_filename"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.RuleID == 0 || req.Label == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "rule_id and label are required"})
+		return
+	}
+
+	if req.ReplyText == "" && req.MediaURL == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Either reply_text or media_url is required"})
+		return
+	}
+
+	id, err := db.AddMenuItem(req.RuleID, req.OptionNumber, req.Label, req.ReplyText, req.MediaURL, req.MediaFilename)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
+		return
+	}
+
+	bot.RefreshAutoReplyCache()
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "id": id})
+}
+
+func MenuItemUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	var req struct {
+		ID            int    `json:"id"`
+		OptionNumber  int    `json:"option_number"`
+		Label         string `json:"label"`
+		ReplyText     string `json:"reply_text"`
+		MediaURL      string `json:"media_url"`
+		MediaFilename string `json:"media_filename"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Valid ID is required"})
+		return
+	}
+
+	err := db.UpdateMenuItem(req.ID, req.OptionNumber, req.Label, req.ReplyText, req.MediaURL, req.MediaFilename)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
+		return
+	}
+
+	bot.RefreshAutoReplyCache()
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true})
+}
+
+func MenuItemDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	var req struct {
+		ID int `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Valid ID is required"})
+		return
+	}
+
+	if err := db.DeleteMenuItem(req.ID); err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
 		return

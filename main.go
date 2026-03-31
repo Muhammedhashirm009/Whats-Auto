@@ -65,6 +65,12 @@ func main() {
 	mux.HandleFunc("/api/auto-replies/update", auth.RequireAuthAPI(api.AutoReplyUpdateHandler))
 	mux.HandleFunc("/api/auto-replies/delete", auth.RequireAuthAPI(api.AutoReplyDeleteHandler))
 
+	// Menu item endpoints — Protected by session auth
+	mux.HandleFunc("/api/menu-items", auth.RequireAuthAPI(api.MenuItemsListHandler))
+	mux.HandleFunc("/api/menu-items/create", auth.RequireAuthAPI(api.MenuItemCreateHandler))
+	mux.HandleFunc("/api/menu-items/update", auth.RequireAuthAPI(api.MenuItemUpdateHandler))
+	mux.HandleFunc("/api/menu-items/delete", auth.RequireAuthAPI(api.MenuItemDeleteHandler))
+
 	// WebSocket bridge — NO auth (Laravel WSS)
 	mux.HandleFunc("/ws/bridge", bot.HandleBridgeWebSocket)
 
