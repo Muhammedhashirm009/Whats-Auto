@@ -148,6 +148,9 @@
         <span class="w-px h-4 bg-slate-200 mx-1"></span>
         <select onchange="if(this.value){insertTemplate(this.value);this.selectedIndex=0;}" class="toolbar-btn bg-white border border-slate-200 text-primary font-semibold pr-6">
           <option value="">📋 Templates</option>
+          <option value="product">🏷️ Product Intro</option>
+          <option value="catalog">📦 Product Catalog</option>
+          <option value="pricelist">💰 Price List</option>
           <option value="document">📄 Document</option>
           <option value="order">📦 Order</option>
           <option value="invoice">🧾 Invoice</option>
@@ -234,6 +237,9 @@
               <span class="w-px h-4 bg-slate-200 mx-0.5"></span>
               <select onchange="if(this.value){insertItemTemplate(this.value);this.selectedIndex=0;}" class="toolbar-btn bg-white border border-slate-200 text-primary font-semibold pr-6">
                 <option value="">📋 Templates</option>
+                <option value="product">🏷️ Product Intro</option>
+                <option value="catalog">📦 Catalog</option>
+                <option value="pricelist">💰 Price List</option>
                 <option value="document">📄 Document</option>
                 <option value="order">📦 Order</option>
                 <option value="invoice">🧾 Invoice</option>
@@ -567,7 +573,13 @@ const templates = {
   support: `🛠️ *Support Ticket Created*\n━━━━━━━━━━━━━━━━━━━━\n\nWe've received your message and a\nsupport ticket has been created.\n\n🎫 *Ticket:* #[AUTO]\n📋 *Priority:* Standard\n⏰ *Response:* Within 2 hours\n\n📝 *While You Wait:*\n   • Check our FAQ: [link]\n   • Browse help docs: [link]\n\n🔔 You'll receive updates right here\n   as our team works on your request.\n\n━━━━━━━━━━━━━━━━━━━━\n_Your satisfaction is our priority._ ❤️`,
   appointment: `📅 *Appointment Confirmation*\n━━━━━━━━━━━━━━━━━━━━\n\nYour appointment has been booked! ✅\n\n📋 *Details:*\n┌─────────────────────\n│  📅  Date:    [Date]\n│  🕐  Time:   [Time]\n│  📍  Venue:  [Location]\n│  👤  With:    [Person]\n└─────────────────────\n\n⚠️ *Important:*\n   • Arrive 10 mins early\n   • Bring relevant documents\n   • Reply *CANCEL* to cancel\n\n━━━━━━━━━━━━━━━━━━━━\n_See you there!_ 👋`,
   promo: `🎉 *EXCLUSIVE OFFER*\n━━━━━━━━━━━━━━━━━━━━\n\n🔥 *Flash Sale — Limited Time Only!*\n\n┌─────────────────────\n│\n│  💰 *FLAT 20% OFF*\n│     on ALL products!\n│\n│  🎟️ Code: *SAVE20*\n│  📦 Min order: ₹500\n│  ⏰ Valid till: [Date]\n│\n└─────────────────────\n\n✅ *How to Order:*\n   1. Browse our catalog\n   2. Reply with item name\n   3. Apply code at checkout\n\n🛒 _Don't miss out — limited stock!_\n\n━━━━━━━━━━━━━━━━━━━━\n_T&C apply._`,
-  feedback: `⭐ *We'd Love Your Feedback!*\n━━━━━━━━━━━━━━━━━━━━\n\nHi! We hope you had a great\nexperience with us. 😊\n\n*How would you rate our service?*\n\n1️⃣  ⭐          Poor\n2️⃣  ⭐⭐       Below Average\n3️⃣  ⭐⭐⭐    Good\n4️⃣  ⭐⭐⭐⭐  Very Good\n5️⃣  ⭐⭐⭐⭐⭐ Excellent!\n\n💬 _Reply with a number (1–5)_\n\n━━━━━━━━━━━━━━━━━━━━\n_Every response is valued._ 🙏`
+  feedback: `⭐ *We'd Love Your Feedback!*\n━━━━━━━━━━━━━━━━━━━━\n\nHi! We hope you had a great\nexperience with us. 😊\n\n*How would you rate our service?*\n\n1️⃣  ⭐          Poor\n2️⃣  ⭐⭐       Below Average\n3️⃣  ⭐⭐⭐    Good\n4️⃣  ⭐⭐⭐⭐  Very Good\n5️⃣  ⭐⭐⭐⭐⭐ Excellent!\n\n💬 _Reply with a number (1–5)_\n\n━━━━━━━━━━━━━━━━━━━━\n_Every response is valued._ 🙏`,
+
+  product: `🏷️ *[Product Name]*\n━━━━━━━━━━━━━━━━━━━━\n\n✨ _Premium Quality Product_\n\n📝 *Description:*\nBrief description of what this\nproduct is and why it's great.\n\n┌─────────────────────\n│  💰  *Price:*     ₹[Amount]\n│  📦  *Stock:*     ✅ In Stock\n│  🚚  *Delivery:*  2–3 days\n│  ⭐  *Rating:*   4.8/5\n└─────────────────────\n\n📌 *Key Features:*\n   • Feature one\n   • Feature two\n   • Feature three\n\n🛒 *How to Order:*\nReply *BUY* to place your order!\n\n━━━━━━━━━━━━━━━━━━━━\n_Free shipping on orders above ₹999_ 🚛`,
+
+  catalog: `📦 *Our Product Catalog*\n━━━━━━━━━━━━━━━━━━━━\n\nBrowse our top-selling products! 🛍️\n\n*🔥 Best Sellers*\n\n1️⃣  *[Product A]*\n     ₹[Price] — ⭐ 4.9\n\n2️⃣  *[Product B]*\n     ₹[Price] — ⭐ 4.7\n\n3️⃣  *[Product C]*\n     ₹[Price] — ⭐ 4.8\n\n━━━━━━━━━━━━━━━━━━━━\n\n*🆕 New Arrivals*\n\n4️⃣  *[Product D]*\n     ₹[Price] — _Just Launched!_\n\n5️⃣  *[Product E]*\n     ₹[Price] — _Limited Edition_\n\n━━━━━━━━━━━━━━━━━━━━\n\n💬 _Reply with a number for details_\n📎 _Or reply *ALL* for full catalog PDF_`,
+
+  pricelist: `💰 *Price List*\n━━━━━━━━━━━━━━━━━━━━\n\n📅 Updated: [Date]\n\n┌─────────────────────\n│  Product          Price\n│  ─────────────────────\n│  [Product A]     ₹[Amt]\n│  [Product B]     ₹[Amt]\n│  [Product C]     ₹[Amt]\n│  [Product D]     ₹[Amt]\n│  [Product E]     ₹[Amt]\n└─────────────────────\n\n🏷️ *Bulk Discounts:*\n   • 5+ units:   *10% OFF*\n   • 10+ units: *15% OFF*\n   • 20+ units: *20% OFF*\n\n📞 For custom quotes, reply *QUOTE*\n\n━━━━━━━━━━━━━━━━━━━━\n_Prices inclusive of GST_ ✅`
 };
 
 function insertTemplate(type) {
