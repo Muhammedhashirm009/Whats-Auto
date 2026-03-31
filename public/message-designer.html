@@ -268,10 +268,15 @@
               <input type="text" id="new-item-media-filename" placeholder="catalog.pdf" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/30">
             </div>
           </div>
-          <!-- Add Button -->
-          <button onclick="addMenuItem()" class="w-full bg-primary text-white py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-emerald-800 active:scale-[0.98] transition-all">
-            <span class="material-symbols-outlined text-sm">add</span> Add Item
-          </button>
+          <!-- Action Buttons -->
+          <div class="flex gap-2">
+            <button onclick="addMenuItem()" id="item-action-btn" class="flex-1 bg-primary text-white py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-emerald-800 active:scale-[0.98] transition-all">
+              <span class="material-symbols-outlined text-sm">add</span> Add Item
+            </button>
+            <button onclick="cancelEditItem()" id="cancel-edit-btn" class="hidden px-5 py-2.5 border border-slate-300 text-slate-600 rounded-xl font-semibold text-sm hover:bg-slate-50 active:scale-[0.98] transition-all">
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -458,7 +463,7 @@ function renderMenuItems() {
   const list = document.getElementById('menu-items-list');
   const count = document.getElementById('items-count');
   count.textContent = `${menuItems.length} item${menuItems.length !== 1 ? 's' : ''}`;
-  document.getElementById('new-item-number').value = menuItems.length + 1;
+  if (editingItemIdx === null) document.getElementById('new-item-number').value = menuItems.length + 1;
 
   if (menuItems.length === 0) {
     list.innerHTML = '<div class="text-center py-6 text-slate-400"><span class="material-symbols-outlined text-3xl mb-1 block">playlist_add</span><p class="text-sm">No items yet. Add your first menu option below.</p></div>';
@@ -467,7 +472,7 @@ function renderMenuItems() {
   }
 
   list.innerHTML = menuItems.map((item, idx) => `
-    <div class="menu-item-card">
+    <div class="menu-item-card ${editingItemIdx === idx ? 'ring-2 ring-primary/40' : ''}">
       <div class="flex items-start gap-3">
         <div class="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
           <span class="text-sm font-bold text-primary">${item.option_number}</span>
@@ -477,13 +482,53 @@ function renderMenuItems() {
           ${item.reply_text ? `<p class="text-xs text-outline mt-1 line-clamp-2">💬 ${esc(item.reply_text).substring(0, 80)}${item.reply_text.length > 80 ? '...' : ''}</p>` : ''}
           ${item.media_url ? `<p class="text-xs text-outline mt-0.5">📎 ${esc(item.media_filename || 'Media')}</p>` : ''}
         </div>
-        <button onclick="deleteMenuItem(${idx})" class="text-slate-400 hover:text-error p-1.5 rounded-lg hover:bg-error/5 transition-all shrink-0">
-          <span class="material-symbols-outlined text-sm">delete</span>
-        </button>
+        <div class="flex items-center gap-0.5 shrink-0">
+          <button onclick="editMenuItem(${idx})" class="text-slate-400 hover:text-primary p-1.5 rounded-lg hover:bg-primary/5 transition-all" title="Edit">
+            <span class="material-symbols-outlined text-sm">edit</span>
+          </button>
+          <button onclick="deleteMenuItem(${idx})" class="text-slate-400 hover:text-error p-1.5 rounded-lg hover:bg-error/5 transition-all" title="Delete">
+            <span class="material-symbols-outlined text-sm">delete</span>
+          </button>
+        </div>
       </div>
     </div>
   `).join('');
   updatePreview();
+}
+
+let editingItemIdx = null;
+
+function editMenuItem(idx) {
+  const item = menuItems[idx];
+  editingItemIdx = idx;
+  document.getElementById('new-item-number').value = item.option_number;
+  document.getElementById('new-item-label').value = item.label;
+  document.getElementById('new-item-reply').value = item.reply_text || '';
+  document.getElementById('new-item-media-url').value = item.media_url || '';
+  document.getElementById('new-item-media-filename').value = item.media_filename || '';
+  // Update button text
+  document.getElementById('item-action-btn').innerHTML = '<span class="material-symbols-outlined text-sm">check</span> Update Item';
+  document.getElementById('item-action-btn').classList.add('bg-amber-600');
+  document.getElementById('item-action-btn').classList.remove('bg-primary');
+  // Show cancel button
+  document.getElementById('cancel-edit-btn').classList.remove('hidden');
+  // Scroll to form
+  document.getElementById('new-item-reply').focus();
+  renderMenuItems();
+}
+
+function cancelEditItem() {
+  editingItemIdx = null;
+  document.getElementById('new-item-number').value = menuItems.length + 1;
+  document.getElementById('new-item-label').value = '';
+  document.getElementById('new-item-reply').value = '';
+  document.getElementById('new-item-media-url').value = '';
+  document.getElementById('new-item-media-filename').value = '';
+  document.getElementById('item-action-btn').innerHTML = '<span class="material-symbols-outlined text-sm">add</span> Add Item';
+  document.getElementById('item-action-btn').classList.remove('bg-amber-600');
+  document.getElementById('item-action-btn').classList.add('bg-primary');
+  document.getElementById('cancel-edit-btn').classList.add('hidden');
+  renderMenuItems();
 }
 
 async function addMenuItem() {
@@ -496,6 +541,30 @@ async function addMenuItem() {
   if (!label || isNaN(optNum)) { alert('Option number and label are required'); return; }
   if (!replyText && !mediaUrl) { alert('Reply text or media URL is required'); return; }
 
+  // ─── UPDATE existing item ───
+  if (editingItemIdx !== null) {
+    const existing = menuItems[editingItemIdx];
+    existing.option_number = optNum;
+    existing.label = label;
+    existing.reply_text = replyText;
+    existing.media_url = mediaUrl;
+    existing.media_filename = mediaFilename;
+
+    // Persist to server if editing existing rule
+    if (existing.id && editingRuleId) {
+      try {
+        await fetch('/api/menu-items/update', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: existing.id, option_number: optNum, label, reply_text: replyText, media_url: mediaUrl, media_filename: mediaFilename })
+        });
+      } catch(e) { /* best effort */ }
+    }
+
+    cancelEditItem();
+    return;
+  }
+
+  // ─── ADD new item ───
   const item = { option_number: optNum, label, reply_text: replyText, media_url: mediaUrl, media_filename: mediaFilename };
 
   // If editing existing rule, save to server immediately
