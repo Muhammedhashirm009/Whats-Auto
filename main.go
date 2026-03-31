@@ -72,6 +72,13 @@ func main() {
 	mux.HandleFunc("/api/menu-items/update", auth.RequireAuthAPI(api.MenuItemUpdateHandler))
 	mux.HandleFunc("/api/menu-items/delete", auth.RequireAuthAPI(api.MenuItemDeleteHandler))
 
+	// Contact & Chat endpoints — Protected by session auth
+	mux.HandleFunc("/api/contacts", auth.RequireAuthAPI(api.ContactsListHandler))
+	mux.HandleFunc("/api/contacts/save", auth.RequireAuthAPI(api.ContactsSaveHandler))
+	mux.HandleFunc("/api/contacts/delete", auth.RequireAuthAPI(api.ContactsDeleteHandler))
+	mux.HandleFunc("/api/chat/history", auth.RequireAuthAPI(api.ChatHistoryHandler))
+	mux.HandleFunc("/api/chat/conversations", auth.RequireAuthAPI(api.ChatConversationsHandler))
+
 	// WebSocket bridge — NO auth (Laravel WSS)
 	mux.HandleFunc("/ws/bridge", bot.HandleBridgeWebSocket)
 

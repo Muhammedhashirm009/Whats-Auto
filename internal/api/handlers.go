@@ -705,3 +705,128 @@ func MenuItemDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	bot.RefreshAutoReplyCache()
 	json.NewEncoder(w).Encode(map[string]interface{}{"success": true})
 }
+
+// ─── Contact & Chat Handlers ────────────────────────────────
+
+func ContactsListHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	q := r.URL.Query().Get("q")
+	var contacts []db.Contact
+	var err error
+
+	if q != "" {
+		contacts, err = db.SearchContacts(q)
+	} else {
+		contacts, err = db.ListContacts()
+	}
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
+		return
+	}
+
+	if contacts == nil {
+		contacts = []db.Contact{}
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "contacts": contacts})
+}
+
+func ContactsSaveHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	var req struct {
+		Phone  string `json:"phone"`
+		Name   string `json:"name"`
+		Labels string `json:"labels"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Phone == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Phone is required"})
+		return
+	}
+
+	if err := db.SaveContact(req.Phone, req.Name, req.Labels); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true})
+}
+
+func ContactsDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	var req struct {
+		Phone string `json:"phone"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Phone == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Phone is required"})
+		return
+	}
+
+	if err := db.DeleteContact(req.Phone); err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true})
+}
+
+func ChatHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	phone := r.URL.Query().Get("phone")
+	if phone == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "phone parameter required"})
+		return
+	}
+
+	limit := 50
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+
+	messages, err := db.GetMessages(phone, limit)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
+		return
+	}
+
+	if messages == nil {
+		messages = []db.Message{}
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "messages": messages})
+}
+
+func ChatConversationsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	convos, err := db.GetRecentConversations()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
+		return
+	}
+
+	if convos == nil {
+		convos = []db.Conversation{}
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "conversations": convos})
+}

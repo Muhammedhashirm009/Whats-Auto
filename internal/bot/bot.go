@@ -47,7 +47,17 @@ func EventHandler(evt interface{}) {
 		}
 
 		if msgText != "" {
-			fmt.Printf("Received a message from %s: %s\n", v.Info.Sender.User, msgText)
+			senderPhone := v.Info.Sender.User
+			fmt.Printf("Received a message from %s: %s\n", senderPhone, msgText)
+
+			// Save incoming message to DB (skip own messages and groups)
+			if v.Info.Sender.Server != types.GroupServer {
+				isOwnMessage := GlobalClient != nil && GlobalClient.Store.ID != nil && senderPhone == GlobalClient.Store.ID.User
+				if !isOwnMessage {
+					db.SaveMessage(senderPhone, "in", msgText, "", "received")
+				}
+			}
+
 			// Process auto-reply in background
 			go ProcessIncomingMessage(v.Info.Sender, msgText)
 		}
@@ -219,6 +229,11 @@ func SendTextMessage(to string, message string) error {
 		Conversation: proto.String(message),
 	})
 	go db.LogMessageUsage(err == nil)
+	status := "sent"
+	if err != nil {
+		status = "failed"
+	}
+	db.SaveMessage(phone, "out", message, "", status)
 	return err
 }
 
@@ -235,6 +250,11 @@ func SendTextMessageToJID(jid types.JID, message string) error {
 		Conversation: proto.String(message),
 	})
 	go db.LogMessageUsage(err == nil)
+	status := "sent"
+	if err != nil {
+		status = "failed"
+	}
+	db.SaveMessage(jid.User, "out", message, "", status)
 	return err
 }
 

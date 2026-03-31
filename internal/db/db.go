@@ -105,6 +105,24 @@ func createTables() {
 			media_filename VARCHAR(255),
 			FOREIGN KEY (rule_id) REFERENCES auto_replies(id) ON DELETE CASCADE
 		);`,
+		`CREATE TABLE IF NOT EXISTS contacts (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			phone VARCHAR(30) NOT NULL UNIQUE,
+			name VARCHAR(100) DEFAULT '',
+			labels VARCHAR(200) DEFAULT '',
+			last_message_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);`,
+		`CREATE TABLE IF NOT EXISTS messages (
+			id INT AUTO_INCREMENT PRIMARY KEY,
+			phone VARCHAR(30) NOT NULL,
+			direction VARCHAR(3) NOT NULL,
+			body TEXT NOT NULL,
+			media_url VARCHAR(500) DEFAULT '',
+			status VARCHAR(20) DEFAULT 'sent',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			INDEX idx_phone_time (phone, created_at)
+		);`,
 	}
 
 	for _, query := range queries {
@@ -114,7 +132,7 @@ func createTables() {
 		}
 	}
 
-	// Migration: add rule_type column if not present (for existing installs)
+	// Migrations for existing installs
 	LocalDB.Exec(`ALTER TABLE auto_replies ADD COLUMN rule_type VARCHAR(10) DEFAULT 'simple'`)
 }
 
@@ -459,4 +477,202 @@ func DeleteMenuItem(id int) error {
 		return fmt.Errorf("menu item not found")
 	}
 	return nil
+}
+
+// ─── Contact Management ────────────────────────────────────
+
+type Contact struct {
+	ID            int    `json:"id"`
+	Phone         string `json:"phone"`
+	Name          string `json:"name"`
+	Labels        string `json:"labels"`
+	LastMessageAt string `json:"last_message_at"`
+	CreatedAt     string `json:"created_at"`
+}
+
+// SaveContact creates or updates a contact. Upserts on phone.
+func SaveContact(phone, name, labels string) error {
+	_, err := LocalDB.Exec(
+		`INSERT INTO contacts (phone, name, labels) VALUES (?, ?, ?)
+		 ON DUPLICATE KEY UPDATE name = IF(? = '', name, ?), labels = IF(? = '', labels, ?), last_message_at = NOW()`,
+		phone, name, labels, name, name, labels, labels,
+	)
+	return err
+}
+
+// TouchContact updates last_message_at, creating the contact if needed.
+func TouchContact(phone string) {
+	if LocalDB == nil {
+		return
+	}
+	LocalDB.Exec(
+		`INSERT INTO contacts (phone) VALUES (?) ON DUPLICATE KEY UPDATE last_message_at = NOW()`,
+		phone,
+	)
+}
+
+// UpdateContactName updates the name of a contact by phone.
+func UpdateContactName(phone, name string) error {
+	_, err := LocalDB.Exec(`UPDATE contacts SET name = ? WHERE phone = ?`, name, phone)
+	return err
+}
+
+// ListContacts returns all contacts ordered by most recent message.
+func ListContacts() ([]Contact, error) {
+	rows, err := LocalDB.Query(
+		`SELECT id, phone, IFNULL(name,''), IFNULL(labels,''), last_message_at, created_at
+		 FROM contacts ORDER BY last_message_at DESC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var contacts []Contact
+	for rows.Next() {
+		var c Contact
+		if err := rows.Scan(&c.ID, &c.Phone, &c.Name, &c.Labels, &c.LastMessageAt, &c.CreatedAt); err != nil {
+			continue
+		}
+		contacts = append(contacts, c)
+	}
+	return contacts, nil
+}
+
+// SearchContacts searches contacts by phone or name.
+func SearchContacts(query string) ([]Contact, error) {
+	q := "%" + query + "%"
+	rows, err := LocalDB.Query(
+		`SELECT id, phone, IFNULL(name,''), IFNULL(labels,''), last_message_at, created_at
+		 FROM contacts WHERE phone LIKE ? OR name LIKE ? ORDER BY last_message_at DESC LIMIT 20`,
+		q, q,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var contacts []Contact
+	for rows.Next() {
+		var c Contact
+		if err := rows.Scan(&c.ID, &c.Phone, &c.Name, &c.Labels, &c.LastMessageAt, &c.CreatedAt); err != nil {
+			continue
+		}
+		contacts = append(contacts, c)
+	}
+	return contacts, nil
+}
+
+// DeleteContact deletes a contact by phone.
+func DeleteContact(phone string) error {
+	result, err := LocalDB.Exec(`DELETE FROM contacts WHERE phone = ?`, phone)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("contact not found")
+	}
+	return nil
+}
+
+// ─── Message Storage ────────────────────────────────────────
+
+type Message struct {
+	ID        int    `json:"id"`
+	Phone     string `json:"phone"`
+	Direction string `json:"direction"` // "in" or "out"
+	Body      string `json:"body"`
+	MediaURL  string `json:"media_url"`
+	Status    string `json:"status"` // "sent", "failed", "delivered", "received"
+	CreatedAt string `json:"created_at"`
+}
+
+// SaveMessage stores a message (incoming or outgoing).
+func SaveMessage(phone, direction, body, mediaURL, status string) {
+	if LocalDB == nil {
+		return
+	}
+	go func() {
+		_, err := LocalDB.Exec(
+			`INSERT INTO messages (phone, direction, body, media_url, status) VALUES (?, ?, ?, ?, ?)`,
+			phone, direction, body, mediaURL, status,
+		)
+		if err != nil {
+			log.Printf("SaveMessage error: %v", err)
+		}
+		// Also touch the contact
+		TouchContact(phone)
+	}()
+}
+
+// GetMessages returns messages for a phone, newest last, with limit.
+func GetMessages(phone string, limit int) ([]Message, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	rows, err := LocalDB.Query(
+		`SELECT id, phone, direction, body, IFNULL(media_url,''), status, created_at
+		 FROM messages WHERE phone = ? ORDER BY created_at DESC, id DESC LIMIT ?`,
+		phone, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var messages []Message
+	for rows.Next() {
+		var m Message
+		if err := rows.Scan(&m.ID, &m.Phone, &m.Direction, &m.Body, &m.MediaURL, &m.Status, &m.CreatedAt); err != nil {
+			continue
+		}
+		messages = append(messages, m)
+	}
+
+	// Reverse so oldest is first (chat order)
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+	return messages, nil
+}
+
+// Conversation holds a contact with their last message for the sidebar.
+type Conversation struct {
+	Contact     Contact `json:"contact"`
+	LastMessage Message `json:"last_message"`
+	UnreadCount int     `json:"unread_count"`
+}
+
+// GetRecentConversations returns contacts that have messages, with last message.
+func GetRecentConversations() ([]Conversation, error) {
+	rows, err := LocalDB.Query(
+		`SELECT c.id, c.phone, IFNULL(c.name,''), IFNULL(c.labels,''), c.last_message_at, c.created_at,
+		        m.id, m.direction, m.body, m.status, m.created_at
+		 FROM contacts c
+		 INNER JOIN messages m ON m.id = (
+		     SELECT MAX(id) FROM messages WHERE phone = c.phone
+		 )
+		 ORDER BY m.created_at DESC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var convos []Conversation
+	for rows.Next() {
+		var cv Conversation
+		if err := rows.Scan(
+			&cv.Contact.ID, &cv.Contact.Phone, &cv.Contact.Name, &cv.Contact.Labels,
+			&cv.Contact.LastMessageAt, &cv.Contact.CreatedAt,
+			&cv.LastMessage.ID, &cv.LastMessage.Direction, &cv.LastMessage.Body,
+			&cv.LastMessage.Status, &cv.LastMessage.CreatedAt,
+		); err != nil {
+			continue
+		}
+		cv.LastMessage.Phone = cv.Contact.Phone
+		convos = append(convos, cv)
+	}
+	return convos, nil
 }
