@@ -17,11 +17,34 @@ import (
 	"go.mau.fi/whatsmeow/types"
 )
 
-// ─── In-memory cache of active auto-reply rules ─────────────
+// ─── Reusable HTTP client for media downloads (opt #5) ──────
+
+var mediaHTTPClient = &http.Client{
+	Timeout: 30 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:       10,
+		IdleConnTimeout:    90 * time.Second,
+		DisableCompression: true,
+	},
+}
+
+// ─── Pre-computed rule cache (opt #6) ───────────────────────
+
+type cachedRule struct {
+	db.AutoReply
+	keywordsLower []string // pre-split, pre-lowered, pre-trimmed
+}
 
 var (
-	autoReplyRules []db.AutoReply
+	autoReplyRules []cachedRule
 	autoReplyMu    sync.RWMutex
+)
+
+// ─── Menu items cache (opt #3) ──────────────────────────────
+
+var (
+	menuItemsCache   = make(map[int][]db.AutoReplyItem) // key: rule ID
+	menuItemsCacheMu sync.RWMutex
 )
 
 // ─── Conversation session tracking ──────────────────────────
@@ -38,6 +61,24 @@ var (
 	sessionTTL     = 5 * time.Minute
 )
 
+// ─── Session cleanup goroutine (opt #7) ─────────────────────
+
+func init() {
+	go func() {
+		for {
+			time.Sleep(60 * time.Second)
+			now := time.Now()
+			menuSessionsMu.Lock()
+			for k, s := range menuSessions {
+				if now.After(s.ExpiresAt) {
+					delete(menuSessions, k)
+				}
+			}
+			menuSessionsMu.Unlock()
+		}
+	}()
+}
+
 // ─── Rule cache management ──────────────────────────────────
 
 func LoadAutoReplyRules() {
@@ -52,9 +93,40 @@ func LoadAutoReplyRules() {
 		return
 	}
 
+	// Pre-compute keywords and cache menu items
+	cached := make([]cachedRule, 0, len(rules))
+	newMenuCache := make(map[int][]db.AutoReplyItem)
+
+	for _, rule := range rules {
+		cr := cachedRule{AutoReply: rule}
+
+		// Pre-split and lowercase keywords (opt #6)
+		rawKW := strings.Split(rule.Keywords, ",")
+		for _, kw := range rawKW {
+			kw = strings.TrimSpace(strings.ToLower(kw))
+			if kw != "" {
+				cr.keywordsLower = append(cr.keywordsLower, kw)
+			}
+		}
+
+		// Pre-cache menu items (opt #3)
+		if rule.RuleType == "menu" {
+			items, err := db.GetMenuItems(rule.ID)
+			if err == nil && len(items) > 0 {
+				newMenuCache[rule.ID] = items
+			}
+		}
+
+		cached = append(cached, cr)
+	}
+
 	autoReplyMu.Lock()
-	autoReplyRules = rules
+	autoReplyRules = cached
 	autoReplyMu.Unlock()
+
+	menuItemsCacheMu.Lock()
+	menuItemsCache = newMenuCache
+	menuItemsCacheMu.Unlock()
 
 	log.Printf("AutoReply: loaded %d active rules", len(rules))
 }
@@ -116,9 +188,9 @@ func ProcessIncomingMessage(senderJID types.JID, messageText string) {
 		menuSessionsMu.Unlock()
 	}
 
-	// Step 2: Normal keyword matching
+	// Step 2: Normal keyword matching (uses pre-computed keywords)
 	autoReplyMu.RLock()
-	rules := make([]db.AutoReply, len(autoReplyRules))
+	rules := make([]cachedRule, len(autoReplyRules))
 	copy(rules, autoReplyRules)
 	autoReplyMu.RUnlock()
 
@@ -138,41 +210,42 @@ func ProcessIncomingMessage(senderJID types.JID, messageText string) {
 	}
 }
 
-// ─── Keyword matching ───────────────────────────────────────
+// ─── Keyword matching (uses pre-computed keywords) ──────────
 
-func matchRule(rule db.AutoReply, msgLower string) bool {
-	keywords := strings.Split(rule.Keywords, ",")
-
+func matchRule(rule cachedRule, msgLower string) bool {
 	switch rule.MatchMode {
 	case "any":
-		for _, kw := range keywords {
-			kw = strings.TrimSpace(strings.ToLower(kw))
-			if kw != "" && strings.Contains(msgLower, kw) {
+		for _, kw := range rule.keywordsLower {
+			if strings.Contains(msgLower, kw) {
 				return true
 			}
 		}
 		return false
 	default: // "all"
-		for _, kw := range keywords {
-			kw = strings.TrimSpace(strings.ToLower(kw))
-			if kw == "" {
-				continue
-			}
+		for _, kw := range rule.keywordsLower {
 			if !strings.Contains(msgLower, kw) {
 				return false
 			}
 		}
-		return true
+		return len(rule.keywordsLower) > 0
 	}
 }
 
 // ─── Menu reply: sends formatted menu + creates session ─────
 
-func sendMenuReply(senderJID types.JID, rule db.AutoReply) {
-	items, err := db.GetMenuItems(rule.ID)
-	if err != nil || len(items) == 0 {
-		log.Printf("AutoReply: menu rule '%s' has no items, skipping", rule.Name)
-		return
+func sendMenuReply(senderJID types.JID, rule cachedRule) {
+	// Try cache first, fallback to DB
+	menuItemsCacheMu.RLock()
+	items, ok := menuItemsCache[rule.ID]
+	menuItemsCacheMu.RUnlock()
+
+	if !ok || len(items) == 0 {
+		var err error
+		items, err = db.GetMenuItems(rule.ID)
+		if err != nil || len(items) == 0 {
+			log.Printf("AutoReply: menu rule '%s' has no items, skipping", rule.Name)
+			return
+		}
 	}
 
 	// Build formatted menu text
@@ -190,7 +263,7 @@ func sendMenuReply(senderJID types.JID, rule db.AutoReply) {
 	sb.WriteString("\n_Reply with a number to continue._")
 
 	// Send menu
-	err = SendTextMessageToJID(senderJID, sb.String())
+	err := SendTextMessageToJID(senderJID, sb.String())
 	if err != nil {
 		log.Printf("AutoReply: failed to send menu for rule '%s': %v", rule.Name, err)
 		return
@@ -226,7 +299,6 @@ func sendMenuItemReply(senderJID types.JID, item db.AutoReplyItem) {
 		return
 	}
 
-	// If item has a media URL, download and send
 	if item.MediaURL != "" {
 		go func() {
 			err := sendMediaFromURL(senderJID.User, item.MediaURL, item.MediaFilename, item.ReplyText)
@@ -250,7 +322,7 @@ func sendMenuItemReply(senderJID types.JID, item db.AutoReplyItem) {
 
 // ─── Simple reply (existing behavior) ───────────────────────
 
-func sendSimpleReply(senderJID types.JID, rule db.AutoReply) {
+func sendSimpleReply(senderJID types.JID, rule cachedRule) {
 	if GlobalClient == nil || !GlobalClient.IsConnected() || !GlobalClient.IsLoggedIn() {
 		log.Println("AutoReply: bot not connected, skipping reply")
 		return
@@ -277,10 +349,10 @@ func sendSimpleReply(senderJID types.JID, rule db.AutoReply) {
 	}
 }
 
-// ─── Shared media helper ────────────────────────────────────
+// ─── Shared media helper (uses reusable HTTP client) ────────
 
 func sendMediaFromURL(phone, mediaURL, mediaFilename, caption string) error {
-	resp, err := http.Get(mediaURL)
+	resp, err := mediaHTTPClient.Get(mediaURL)
 	if err != nil {
 		return fmt.Errorf("failed to download media: %v", err)
 	}

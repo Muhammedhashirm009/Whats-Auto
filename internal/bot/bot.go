@@ -177,43 +177,41 @@ func Logout() error {
 }
 
 func SendTextMessage(to string, message string) error {
-	if !IsInternetAvailable() {
-		return fmt.Errorf("no internet connection")
-	}
-	if GlobalClient == nil {
+	if GlobalClient == nil || !GlobalClient.IsConnected() {
 		return fmt.Errorf("client not connected")
 	}
 
 	phone := strings.ReplaceAll(strings.ReplaceAll(to, "+", ""), " ", "")
 	jid := types.NewJID(phone, types.DefaultUserServer)
-	_, err := GlobalClient.SendMessage(context.Background(), jid, &waProto.Message{
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := GlobalClient.SendMessage(ctx, jid, &waProto.Message{
 		Conversation: proto.String(message),
 	})
-	db.LogMessageUsage(err == nil)
+	go db.LogMessageUsage(err == nil)
 	return err
 }
 
 // SendTextMessageToJID sends a text message directly using a full JID (preserves @lid or @s.whatsapp.net).
 func SendTextMessageToJID(jid types.JID, message string) error {
-	if !IsInternetAvailable() {
-		return fmt.Errorf("no internet connection")
-	}
-	if GlobalClient == nil {
+	if GlobalClient == nil || !GlobalClient.IsConnected() {
 		return fmt.Errorf("client not connected")
 	}
 
-	_, err := GlobalClient.SendMessage(context.Background(), jid, &waProto.Message{
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := GlobalClient.SendMessage(ctx, jid, &waProto.Message{
 		Conversation: proto.String(message),
 	})
-	db.LogMessageUsage(err == nil)
+	go db.LogMessageUsage(err == nil)
 	return err
 }
 
 func SendMediaMessage(to string, filePath string, caption string) error {
-	if !IsInternetAvailable() {
-		return fmt.Errorf("no internet connection")
-	}
-	if GlobalClient == nil {
+	if GlobalClient == nil || !GlobalClient.IsConnected() {
 		return fmt.Errorf("client not connected")
 	}
 
@@ -297,7 +295,11 @@ func SendMediaMessage(to string, filePath string, caption string) error {
 
 	phone := strings.ReplaceAll(strings.ReplaceAll(to, "+", ""), " ", "")
 	jid := types.NewJID(phone, types.DefaultUserServer)
-	_, err = GlobalClient.SendMessage(context.Background(), jid, msg)
-	db.LogMessageUsage(err == nil)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err = GlobalClient.SendMessage(ctx, jid, msg)
+	go db.LogMessageUsage(err == nil)
 	return err
 }
