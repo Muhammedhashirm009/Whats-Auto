@@ -153,7 +153,19 @@
       <div id="simple-fields">
         <div class="mb-4">
           <label class="block text-sm font-semibold text-on-surface mb-2">Reply Message</label>
-          <textarea id="edit-reply-text" rows="3" placeholder="The text the bot will send as reply..." class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none"></textarea>
+          <!-- Formatting Toolbar -->
+          <div class="flex items-center gap-1 mb-1.5 p-1.5 bg-slate-50 rounded-t-xl border border-b-0 border-slate-200">
+            <button type="button" onclick="wrapText('*','*')" class="px-2 py-1 text-xs font-bold text-slate-600 hover:bg-white rounded transition-all" title="Bold">B</button>
+            <button type="button" onclick="wrapText('_','_')" class="px-2 py-1 text-xs italic text-slate-600 hover:bg-white rounded transition-all" title="Italic">I</button>
+            <button type="button" onclick="wrapText('~','~')" class="px-2 py-1 text-xs line-through text-slate-600 hover:bg-white rounded transition-all" title="Strikethrough">S</button>
+            <span class="w-px h-4 bg-slate-300 mx-1"></span>
+            <button type="button" onclick="insertList('bullet')" class="px-2 py-1 text-xs text-slate-600 hover:bg-white rounded transition-all" title="Bullet List">• List</button>
+            <button type="button" onclick="insertList('number')" class="px-2 py-1 text-xs text-slate-600 hover:bg-white rounded transition-all" title="Numbered List">1. List</button>
+            <span class="w-px h-4 bg-slate-300 mx-1"></span>
+            <button type="button" onclick="insertTemplate()" class="px-2 py-1 text-xs text-primary font-semibold hover:bg-primary/5 rounded transition-all" title="Professional Template">📋 Template</button>
+          </div>
+          <textarea id="edit-reply-text" rows="6" placeholder="📝 Type your message here...&#10;&#10;Use *bold*, _italic_, ~strikethrough~&#10;WhatsApp will render the formatting!" class="w-full px-4 py-3 border border-slate-200 rounded-b-xl rounded-t-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none font-mono text-[13px] leading-relaxed"></textarea>
+          <p class="text-[11px] text-slate-400 mt-1.5">💡 <strong>*bold*</strong> &nbsp; <em>_italic_</em> &nbsp; <del>~strikethrough~</del> &nbsp; Use line breaks for lists.</p>
         </div>
         <div class="border-t border-slate-100 pt-4">
           <p class="text-xs font-bold uppercase tracking-widest text-outline mb-3">Media Attachment (Optional)</p>
@@ -504,5 +516,54 @@ async function checkStatus() {
 loadRules();
 checkStatus();
 setInterval(checkStatus, 10000);
+
+// ─── WhatsApp Formatting Helpers ────────────────
+function wrapText(before, after) {
+  const ta = document.getElementById('edit-reply-text');
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const selected = ta.value.substring(start, end);
+  if (selected) {
+    ta.value = ta.value.substring(0, start) + before + selected + after + ta.value.substring(end);
+    ta.selectionStart = start + before.length;
+    ta.selectionEnd = end + before.length;
+  } else {
+    ta.value = ta.value.substring(0, start) + before + 'text' + after + ta.value.substring(end);
+    ta.selectionStart = start + before.length;
+    ta.selectionEnd = start + before.length + 4;
+  }
+  ta.focus();
+}
+
+function insertList(type) {
+  const ta = document.getElementById('edit-reply-text');
+  const pos = ta.selectionStart;
+  const prefix = pos > 0 && ta.value[pos-1] !== '\n' ? '\n' : '';
+  let list;
+  if (type === 'bullet') {
+    list = prefix + '• Item 1\n• Item 2\n• Item 3\n';
+  } else {
+    list = prefix + '1. First point\n2. Second point\n3. Third point\n';
+  }
+  ta.value = ta.value.substring(0, pos) + list + ta.value.substring(pos);
+  ta.selectionStart = ta.selectionEnd = pos + list.length;
+  ta.focus();
+}
+
+function insertTemplate() {
+  const ta = document.getElementById('edit-reply-text');
+  const template = `📄 *Document Details*
+━━━━━━━━━━━━━━━━━
+
+📌 *What's Included:*
+• Item description here
+• Another item detail
+
+📞 *Contact Us:*
+For any queries, reach out to us.
+
+_Thank you for choosing our service!_ ✨`;
+  ta.value = template;
+  ta.focus();
+}
 </script>
 </body></html>
