@@ -301,7 +301,7 @@ func sendMenuItemReply(senderJID types.JID, item db.AutoReplyItem) {
 
 	if item.MediaURL != "" {
 		go func() {
-			err := sendMediaFromURL(senderJID.User, item.MediaURL, item.MediaFilename, item.ReplyText)
+			err := sendMediaFromURL(senderJID, item.MediaURL, item.MediaFilename, item.ReplyText)
 			if err != nil {
 				log.Printf("AutoReply: menu item media send failed: %v", err)
 				if item.ReplyText != "" {
@@ -330,7 +330,7 @@ func sendSimpleReply(senderJID types.JID, rule cachedRule) {
 
 	if rule.MediaURL != "" {
 		go func() {
-			err := sendMediaFromURL(senderJID.User, rule.MediaURL, rule.MediaFilename, rule.ReplyText)
+			err := sendMediaFromURL(senderJID, rule.MediaURL, rule.MediaFilename, rule.ReplyText)
 			if err != nil {
 				log.Printf("AutoReply: media send failed for rule '%s': %v", rule.Name, err)
 				if rule.ReplyText != "" {
@@ -351,7 +351,7 @@ func sendSimpleReply(senderJID types.JID, rule cachedRule) {
 
 // ─── Shared media helper (uses reusable HTTP client) ────────
 
-func sendMediaFromURL(phone, mediaURL, mediaFilename, caption string) error {
+func sendMediaFromURL(recipientJID types.JID, mediaURL, mediaFilename, caption string) error {
 	resp, err := mediaHTTPClient.Get(mediaURL)
 	if err != nil {
 		return fmt.Errorf("failed to download media: %v", err)
@@ -378,5 +378,6 @@ func sendMediaFromURL(phone, mediaURL, mediaFilename, caption string) error {
 	}
 	defer os.Remove(tmpFile)
 
-	return SendMediaMessage(phone, tmpFile, caption)
+	// Build the media message using SendMediaMessage's logic but send via JID
+	return SendMediaMessageFromFile(recipientJID, tmpFile, caption)
 }

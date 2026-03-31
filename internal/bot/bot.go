@@ -323,11 +323,102 @@ func SendMediaMessage(to string, filePath string, caption string) error {
 
 	phone := strings.ReplaceAll(strings.ReplaceAll(to, "+", ""), " ", "")
 	jid := types.NewJID(phone, types.DefaultUserServer)
+	return SendMediaMessageToJID(jid, msg)
+}
 
+// SendMediaMessageToJID sends a media message using a full JID (preserves @lid or @s.whatsapp.net).
+func SendMediaMessageToJID(jid types.JID, msg *waProto.Message) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	_, err = GlobalClient.SendMessage(ctx, jid, msg)
+	_, err := GlobalClient.SendMessage(ctx, jid, msg)
 	go db.LogMessageUsage(err == nil)
 	return err
+}
+
+// SendMediaMessageFromFile builds a media message from a file and sends via JID.
+func SendMediaMessageFromFile(jid types.JID, filePath string, caption string) error {
+	if GlobalClient == nil || !GlobalClient.IsConnected() {
+		return fmt.Errorf("client not connected")
+	}
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %v", err)
+	}
+
+	kind, _ := filetype.Match(data)
+	var mediaType whatsmeow.MediaType
+	if kind.MIME.Type == "image" {
+		mediaType = whatsmeow.MediaImage
+	} else if kind.MIME.Type == "video" {
+		mediaType = whatsmeow.MediaVideo
+	} else if kind.MIME.Type == "audio" {
+		mediaType = whatsmeow.MediaAudio
+	} else {
+		mediaType = whatsmeow.MediaDocument
+	}
+
+	uploadResp, err := GlobalClient.Upload(context.Background(), data, mediaType)
+	if err != nil {
+		return fmt.Errorf("failed to upload media: %v", err)
+	}
+
+	var msg *waProto.Message
+	switch mediaType {
+	case whatsmeow.MediaImage:
+		msg = &waProto.Message{
+			ImageMessage: &waProto.ImageMessage{
+				Caption:       proto.String(caption),
+				Mimetype:      proto.String(kind.MIME.Value),
+				URL:           proto.String(uploadResp.URL),
+				DirectPath:    proto.String(uploadResp.DirectPath),
+				MediaKey:      uploadResp.MediaKey,
+				FileEncSHA256: uploadResp.FileEncSHA256,
+				FileSHA256:    uploadResp.FileSHA256,
+				FileLength:    proto.Uint64(uint64(len(data))),
+			},
+		}
+	case whatsmeow.MediaVideo:
+		msg = &waProto.Message{
+			VideoMessage: &waProto.VideoMessage{
+				Caption:       proto.String(caption),
+				Mimetype:      proto.String(kind.MIME.Value),
+				URL:           proto.String(uploadResp.URL),
+				DirectPath:    proto.String(uploadResp.DirectPath),
+				MediaKey:      uploadResp.MediaKey,
+				FileEncSHA256: uploadResp.FileEncSHA256,
+				FileSHA256:    uploadResp.FileSHA256,
+				FileLength:    proto.Uint64(uint64(len(data))),
+			},
+		}
+	case whatsmeow.MediaDocument:
+		msg = &waProto.Message{
+			DocumentMessage: &waProto.DocumentMessage{
+				Caption:       proto.String(caption),
+				Mimetype:      proto.String(kind.MIME.Value),
+				FileName:      proto.String(filepath.Base(filePath)),
+				URL:           proto.String(uploadResp.URL),
+				DirectPath:    proto.String(uploadResp.DirectPath),
+				MediaKey:      uploadResp.MediaKey,
+				FileEncSHA256: uploadResp.FileEncSHA256,
+				FileSHA256:    uploadResp.FileSHA256,
+				FileLength:    proto.Uint64(uint64(len(data))),
+			},
+		}
+	case whatsmeow.MediaAudio:
+		msg = &waProto.Message{
+			AudioMessage: &waProto.AudioMessage{
+				Mimetype:      proto.String(kind.MIME.Value),
+				URL:           proto.String(uploadResp.URL),
+				DirectPath:    proto.String(uploadResp.DirectPath),
+				MediaKey:      uploadResp.MediaKey,
+				FileEncSHA256: uploadResp.FileEncSHA256,
+				FileSHA256:    uploadResp.FileSHA256,
+				FileLength:    proto.Uint64(uint64(len(data))),
+			},
+		}
+	}
+
+	return SendMediaMessageToJID(jid, msg)
 }
