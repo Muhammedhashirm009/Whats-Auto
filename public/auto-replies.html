@@ -178,9 +178,12 @@
                   <option value="">📋 Templates</option>
                   <option value="document">📄 Document Share</option>
                   <option value="order">📦 Order Confirmation</option>
+                  <option value="invoice">🧾 Invoice / Receipt</option>
                   <option value="welcome">👋 Welcome Message</option>
                   <option value="support">🛠️ Support Reply</option>
+                  <option value="appointment">📅 Appointment</option>
                   <option value="promo">🎉 Promotion</option>
+                  <option value="feedback">⭐ Feedback Request</option>
                 </select>
               </div>
               <textarea id="edit-reply-text" rows="8" oninput="updatePreview()" placeholder="📝 Type your message here...&#10;&#10;Use *bold*, _italic_, ~strikethrough~&#10;WhatsApp will render the formatting!" class="w-full px-4 py-3 border border-slate-200 rounded-b-xl rounded-t-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none font-mono text-[13px] leading-relaxed"></textarea>
@@ -612,76 +615,178 @@ function insertList(type) {
 
 const templates = {
   document: `📄 *Document Shared*
-━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 
-📌 *What's Included:*
-• Complete details & documentation
-• All relevant attachments
+Here's the document you requested.
 
-📞 *Need Help?*
-Reply to this message for assistance.
+📌 *What's Inside:*
+   • Complete documentation
+   • Supporting attachments
+   • Reference materials
 
-_Thank you for choosing our service!_ ✨`,
+💡 *Quick Access:*
+   Open the file above to view all details.
 
-  order: `📦 *Order Confirmation*
-━━━━━━━━━━━━━━━━━
+📞 *Questions?*
+   Simply reply to this message —
+   our team responds within minutes.
 
-✅ Your order has been received!
+━━━━━━━━━━━━━━━━━━━━
+_Powered by ERPAGENT_ ⚡`,
 
-🔖 *Order Details:*
-• Item: [Product Name]
-• Qty: [Quantity]
-• Total: ₹[Amount]
+  order: `📦 *Order Confirmed!*
+━━━━━━━━━━━━━━━━━━━━
 
-🚚 *Delivery:*
-Expected within 3-5 business days.
+✅ Thank you — your order is locked in.
 
-_Thank you for your purchase!_ 🙏`,
+🔖 *Order Summary*
+┌─────────────────────
+│  Item:    [Product Name]
+│  Qty:      [Quantity]
+│  Price:   ₹[Amount]
+│  Status:  ✅ Confirmed
+└─────────────────────
 
-  welcome: `👋 *Welcome!*
-━━━━━━━━━━━━━━━━━
+🚚 *Delivery Timeline*
+   📍 Estimated: 3–5 business days
+   📦 Tracking link will be shared
 
-Thank you for reaching out to us!
+💳 *Payment:* Received ✓
 
-*How can we help you today?*
+━━━━━━━━━━━━━━━━━━━━
+_Need to modify? Reply within 1 hour._ ⏰`,
 
-1️⃣ Product Information
-2️⃣ Place an Order
-3️⃣ Track Delivery
-4️⃣ Support
+  invoice: `🧾 *Invoice / Receipt*
+━━━━━━━━━━━━━━━━━━━━
 
-_Reply with a number to get started._`,
+📋 *Invoice No:* #[INV-0001]
+📅 *Date:* [Date]
+👤 *Customer:* [Name]
 
-  support: `🛠️ *Support Response*
-━━━━━━━━━━━━━━━━━
+┌─────────────────────
+│  Description     Qty    Amount
+│  ─────────────────────
+│  [Item 1]          1     ₹[Amt]
+│  [Item 2]          1     ₹[Amt]
+│  ─────────────────────
+│  *Subtotal:*            ₹[Amt]
+│  *Tax (GST):*          ₹[Amt]
+│  ─────────────────────
+│  *TOTAL:*              *₹[Amt]*
+└─────────────────────
 
-Thank you for contacting support.
+💳 *Payment:* [Method]
 
-We've received your query and our team is looking into it.
+━━━━━━━━━━━━━━━━━━━━
+_Thank you for your business!_ 🙏`,
 
-⏰ *Expected Response Time:*
-Within 24 hours
+  welcome: `👋 *Welcome to [Business Name]!*
+━━━━━━━━━━━━━━━━━━━━
 
-📧 For urgent issues, email us at:
-support@example.com
+We're glad you're here! 🎉
 
-_We appreciate your patience!_`,
+*How can we assist you today?*
 
-  promo: `🎉 *Special Offer!*
-━━━━━━━━━━━━━━━━━
+1️⃣  📋  Product Catalog
+2️⃣  🛒  Place an Order
+3️⃣  📦  Track My Order
+4️⃣  🛠️  Get Support
+5️⃣  📞  Talk to a Human
 
-🔥 *Limited Time Deal*
+💬 _Simply reply with a number_
+   _to get started instantly._
 
-Get *20% OFF* on all products!
+━━━━━━━━━━━━━━━━━━━━
+⏰ *Hours:* Mon–Sat, 9 AM – 6 PM`,
 
-📋 *How to Avail:*
-• Use code: *SAVE20*
-• Min order: ₹500
-• Valid till: [Date]
+  support: `🛠️ *Support Ticket Created*
+━━━━━━━━━━━━━━━━━━━━
 
-🛒 Order now before it's gone!
+We've received your message and a
+support ticket has been created.
 
-_Terms & conditions apply._`
+🎫 *Ticket:* #[AUTO]
+📋 *Priority:* Standard
+⏰ *Response:* Within 2 hours
+
+📝 *While You Wait:*
+   • Check our FAQ: [link]
+   • Browse help docs: [link]
+
+🔔 You'll receive updates right here
+   as our team works on your request.
+
+━━━━━━━━━━━━━━━━━━━━
+_Your satisfaction is our priority._ ❤️`,
+
+  appointment: `📅 *Appointment Confirmation*
+━━━━━━━━━━━━━━━━━━━━
+
+Your appointment has been booked! ✅
+
+📋 *Details:*
+┌─────────────────────
+│  📅  Date:    [Date]
+│  🕐  Time:   [Time]
+│  📍  Venue:  [Location]
+│  👤  With:    [Person]
+└─────────────────────
+
+⚠️ *Important:*
+   • Arrive 10 mins early
+   • Bring relevant documents
+   • Reply *CANCEL* to cancel
+
+━━━━━━━━━━━━━━━━━━━━
+_See you there!_ 👋`,
+
+  promo: `🎉 *EXCLUSIVE OFFER*
+━━━━━━━━━━━━━━━━━━━━
+
+🔥 *Flash Sale — Limited Time Only!*
+
+┌─────────────────────
+│
+│  💰 *FLAT 20% OFF*
+│     on ALL products!
+│
+│  🎟️ Code: *SAVE20*
+│  📦 Min order: ₹500
+│  ⏰ Valid till: [Date]
+│
+└─────────────────────
+
+✅ *How to Order:*
+   1. Browse our catalog
+   2. Reply with item name
+   3. Apply code at checkout
+
+🛒 _Don't miss out — limited stock!_
+
+━━━━━━━━━━━━━━━━━━━━
+_T&C apply. Cannot combine with other offers._`,
+
+  feedback: `⭐ *We'd Love Your Feedback!*
+━━━━━━━━━━━━━━━━━━━━
+
+Hi! We hope you had a great
+experience with us. 😊
+
+*How would you rate our service?*
+
+1️⃣  ⭐          Poor
+2️⃣  ⭐⭐       Below Average
+3️⃣  ⭐⭐⭐    Good
+4️⃣  ⭐⭐⭐⭐  Very Good
+5️⃣  ⭐⭐⭐⭐⭐ Excellent!
+
+💬 _Reply with a number (1–5)_
+
+Your feedback helps us improve and
+serve you better. Thank you! 🙏
+
+━━━━━━━━━━━━━━━━━━━━
+_Every response is valued._`
 };
 
 function insertTemplate(type) {

@@ -256,11 +256,11 @@ func sendMenuReply(senderJID types.JID, rule cachedRule) {
 	} else {
 		sb.WriteString(fmt.Sprintf("📋 *%s*\n", rule.Name))
 	}
-	sb.WriteString("━━━━━━━━━━━━━━━━━\n")
+	sb.WriteString("━━━━━━━━━━━━━━━━━━━━\n\n")
 	for _, item := range items {
-		sb.WriteString(fmt.Sprintf("%s %s\n", numberEmoji(item.OptionNumber), item.Label))
+		sb.WriteString(fmt.Sprintf("%s  %s\n", numberEmoji(item.OptionNumber), item.Label))
 	}
-	sb.WriteString("\n_Reply with a number to continue._")
+	sb.WriteString("\n💬 _Reply with a number to continue._")
 
 	// Send menu
 	err := SendTextMessageToJID(senderJID, sb.String())
