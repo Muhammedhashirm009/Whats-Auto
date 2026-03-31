@@ -77,9 +77,9 @@
     <h2 class="text-3xl md:text-4xl font-headline font-extrabold text-primary tracking-tight">Auto Replies</h2>
     <p class="text-on-surface-variant font-medium mt-1">Configure keyword-based automatic responses for incoming messages.</p>
   </div>
-  <button onclick="showCreateModal()" class="bg-primary text-white px-5 py-3 rounded-xl font-semibold shadow-lg shadow-emerald-900/10 hover:shadow-emerald-900/20 active:scale-95 transition-all flex items-center gap-2">
+  <a href="/designer" class="bg-primary text-white px-5 py-3 rounded-xl font-semibold shadow-lg shadow-emerald-900/10 hover:shadow-emerald-900/20 active:scale-95 transition-all flex items-center gap-2">
     <span class="material-symbols-outlined text-sm">add</span> New Rule
-  </button>
+  </a>
 </header>
 
 <!-- Info Banner -->
@@ -370,8 +370,8 @@ function renderRules(rules) {
           </div>
         </div>
         <div class="flex items-center gap-1 shrink-0 ml-4">
-          ${isMenu ? `<button onclick="showItemsModal(${r.id}, '${esc(r.name)}')" class="text-slate-400 hover:text-purple-600 p-2 rounded-lg hover:bg-purple-50 transition-all" title="Manage items"><span class="material-symbols-outlined text-sm">list_alt</span></button>` : ''}
-          <button onclick='editRule(${JSON.stringify(r).replace(/'/g, "&#39;")})' class="text-slate-400 hover:text-primary p-2 rounded-lg hover:bg-primary/5 transition-all" title="Edit"><span class="material-symbols-outlined text-sm">edit</span></button>
+          ${isMenu ? `<a href="/designer?id=${r.id}" class="text-slate-400 hover:text-purple-600 p-2 rounded-lg hover:bg-purple-50 transition-all" title="Manage items"><span class="material-symbols-outlined text-sm">list_alt</span></a>` : ''}
+          <a href="/designer?id=${r.id}" class="text-slate-400 hover:text-primary p-2 rounded-lg hover:bg-primary/5 transition-all" title="Edit in Designer"><span class="material-symbols-outlined text-sm">edit</span></a>
           <button onclick="showDeleteModal(${r.id})" class="text-slate-400 hover:text-error p-2 rounded-lg hover:bg-error/5 transition-all" title="Delete"><span class="material-symbols-outlined text-sm">delete</span></button>
         </div>
       </div>`;

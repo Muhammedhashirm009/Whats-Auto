@@ -381,6 +381,19 @@ func ListAutoReplies() ([]AutoReply, error) {
 	return rules, nil
 }
 
+func GetAutoReplyByID(id int) (*AutoReply, error) {
+	var r AutoReply
+	var createdStr string
+	err := LocalDB.QueryRow(
+		`SELECT id, name, keywords, IFNULL(reply_text,''), IFNULL(media_url,''), IFNULL(media_filename,''), match_mode, IFNULL(rule_type,'simple'), is_active, created_at FROM auto_replies WHERE id = ?`, id,
+	).Scan(&r.ID, &r.Name, &r.Keywords, &r.ReplyText, &r.MediaURL, &r.MediaFilename, &r.MatchMode, &r.RuleType, &r.IsActive, &createdStr)
+	if err != nil {
+		return nil, err
+	}
+	r.CreatedAt = createdStr
+	return &r, nil
+}
+
 func GetActiveAutoReplies() ([]AutoReply, error) {
 	rows, err := LocalDB.Query(`SELECT id, name, keywords, IFNULL(reply_text,''), IFNULL(media_url,''), IFNULL(media_filename,''), match_mode, IFNULL(rule_type,'simple'), is_active, created_at FROM auto_replies WHERE is_active = 1 ORDER BY id ASC`)
 	if err != nil {

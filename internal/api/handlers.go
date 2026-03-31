@@ -485,6 +485,37 @@ func AutoReplyListHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "rules": rules})
 }
 
+func AutoReplyGetHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "id is required"})
+		return
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "invalid id"})
+		return
+	}
+	rule, err := db.GetAutoReplyByID(id)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "rule not found"})
+		return
+	}
+	result := map[string]interface{}{"success": true, "rule": rule}
+	// Include menu items if it's a menu type
+	if rule.RuleType == "menu" {
+		items, err := db.GetMenuItems(rule.ID)
+		if err == nil {
+			result["items"] = items
+		}
+	}
+	json.NewEncoder(w).Encode(result)
+}
+
 func AutoReplyCreateHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

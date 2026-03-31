@@ -62,6 +62,7 @@ func main() {
 
 	// Auto Reply management endpoints — Protected by session auth
 	mux.HandleFunc("/api/auto-replies", auth.RequireAuthAPI(api.AutoReplyListHandler))
+	mux.HandleFunc("/api/auto-replies/get", auth.RequireAuthAPI(api.AutoReplyGetHandler))
 	mux.HandleFunc("/api/auto-replies/create", auth.RequireAuthAPI(api.AutoReplyCreateHandler))
 	mux.HandleFunc("/api/auto-replies/update", auth.RequireAuthAPI(api.AutoReplyUpdateHandler))
 	mux.HandleFunc("/api/auto-replies/delete", auth.RequireAuthAPI(api.AutoReplyDeleteHandler))
@@ -102,6 +103,9 @@ func main() {
 	}))
 	mux.HandleFunc("/auto-replies", auth.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "public/auto-replies.html")
+	}))
+	mux.HandleFunc("/designer", auth.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "public/message-designer.html")
 	}))
 
 	// Static assets (no auth for JS/CSS)

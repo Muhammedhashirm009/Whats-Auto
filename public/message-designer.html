@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Message Designer | WhatsBridge</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          "surface-container-lowest": "#ffffff", "surface": "#f7f9fc", "primary": "#00453d",
+          "on-primary": "#ffffff", "on-error-container": "#93000a", "background": "#f7f9fc",
+          "outline": "#6f7976", "primary-fixed": "#a8f0e3", "primary-container": "#075e54",
+          "surface-container-high": "#e6e8eb", "on-surface": "#191c1e", "error": "#ba1a1a",
+          "surface-container-highest": "#e0e3e6", "surface-container-low": "#f2f4f7",
+          "secondary-container": "#5dfd8a", "surface-variant": "#e0e3e6", "on-secondary": "#ffffff",
+          "error-container": "#ffdad6", "surface-container": "#eceef1",
+          "on-surface-variant": "#3f4946", "outline-variant": "#bec9c5",
+          "on-primary-container": "#8dd5c8", "secondary": "#006d2f",
+          "on-secondary-container": "#007232", "on-primary-fixed": "#00201c",
+        },
+        fontFamily: { "headline": ["Manrope"], "body": ["Inter"], "label": ["Inter"] },
+      },
+    },
+  }
+</script>
+<style>
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.3s ease-out; }
+  .wa-bg { background: #efeae2; background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23c8c3b8' fill-opacity='0.08'%3E%3Cpath d='M30 30v-6h-3v6h-6v3h6v6h3v-6h6v-3h-6z'/%3E%3C/g%3E%3C/svg%3E"); }
+  .toolbar-btn { padding: 4px 10px; font-size: 12px; color: #475569; border-radius: 8px; transition: all 0.15s; cursor: pointer; user-select: none; }
+  .toolbar-btn:hover { background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .toolbar-btn:active { transform: scale(0.95); }
+  .menu-item-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; transition: all 0.15s; }
+  .menu-item-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+</style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased min-h-screen">
+
+<!-- Top Bar -->
+<header class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 md:px-8 py-3">
+  <div class="flex items-center justify-between max-w-7xl mx-auto">
+    <div class="flex items-center gap-3">
+      <a href="/auto-replies" class="flex items-center gap-2 text-slate-500 hover:text-primary transition-all">
+        <span class="material-symbols-outlined text-xl">arrow_back</span>
+      </a>
+      <div class="w-px h-6 bg-slate-200"></div>
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+          <span class="material-symbols-outlined text-white text-sm" style="font-variation-settings:'FILL' 1;">edit_note</span>
+        </div>
+        <div>
+          <h1 id="page-title" class="text-sm font-headline font-bold text-primary leading-tight">New Rule</h1>
+          <p class="text-[10px] text-slate-400">Message Designer</p>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="saveAndBack()" id="save-btn" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-emerald-900/10 hover:shadow-emerald-900/20 active:scale-95 transition-all flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm">save</span> Save Rule
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Main Layout -->
+<main class="max-w-7xl mx-auto px-4 md:px-8 py-6 flex flex-col lg:flex-row gap-6">
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- LEFT PANEL: Settings + Editor -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="flex-1 min-w-0 space-y-5">
+
+    <!-- Rule Settings Card -->
+    <div class="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-5 space-y-4">
+      <h2 class="text-sm font-headline font-bold text-primary flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm">settings</span> Rule Settings
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-on-surface mb-1.5">Rule Name</label>
+          <input type="text" id="rule-name" placeholder="e.g., Catalog Request" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-on-surface mb-1.5">Keywords</label>
+          <input type="text" id="rule-keywords" placeholder="e.g., catalog, menu, pdf" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+          <p class="text-[10px] text-slate-400 mt-1">Comma-separated keywords that trigger this rule</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <!-- Rule Type -->
+        <div>
+          <label class="block text-xs font-semibold text-on-surface mb-1.5">Type</label>
+          <div class="flex gap-2">
+            <label class="flex-1 cursor-pointer"><input type="radio" name="rule-type" value="simple" class="peer hidden" checked>
+              <div class="peer-checked:bg-primary peer-checked:text-white bg-surface-container-high text-on-surface-variant px-3 py-2.5 rounded-xl text-center text-xs font-semibold transition-all">💬 Simple</div>
+            </label>
+            <label class="flex-1 cursor-pointer"><input type="radio" name="rule-type" value="menu" class="peer hidden">
+              <div class="peer-checked:bg-primary peer-checked:text-white bg-surface-container-high text-on-surface-variant px-3 py-2.5 rounded-xl text-center text-xs font-semibold transition-all">📋 Menu</div>
+            </label>
+          </div>
+        </div>
+        <!-- Match Mode -->
+        <div>
+          <label class="block text-xs font-semibold text-on-surface mb-1.5">Match</label>
+          <div class="flex gap-2">
+            <label class="flex-1 cursor-pointer"><input type="radio" name="match-mode" value="all" class="peer hidden" checked>
+              <div class="peer-checked:bg-primary peer-checked:text-white bg-surface-container-high text-on-surface-variant px-3 py-2.5 rounded-xl text-center text-xs font-semibold transition-all">All</div>
+            </label>
+            <label class="flex-1 cursor-pointer"><input type="radio" name="match-mode" value="any" class="peer hidden">
+              <div class="peer-checked:bg-primary peer-checked:text-white bg-surface-container-high text-on-surface-variant px-3 py-2.5 rounded-xl text-center text-xs font-semibold transition-all">Any</div>
+            </label>
+          </div>
+        </div>
+        <!-- Active Toggle -->
+        <div id="active-section" class="hidden">
+          <label class="block text-xs font-semibold text-on-surface mb-1.5">Status</label>
+          <label class="flex items-center gap-3 px-3 py-2.5 bg-surface-container-high rounded-xl cursor-pointer">
+            <div class="relative inline-flex items-center">
+              <input type="checkbox" id="rule-active" class="sr-only peer" checked>
+              <div class="w-9 h-5 bg-gray-300 rounded-full peer peer-checked:bg-primary peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+            </div>
+            <span class="text-xs font-semibold">Active</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ SIMPLE REPLY EDITOR ═══════ -->
+    <div id="simple-editor" class="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-5 space-y-4">
+      <h2 class="text-sm font-headline font-bold text-primary flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm">chat</span> Reply Message
+      </h2>
+
+      <!-- Formatting Toolbar -->
+      <div class="flex items-center gap-1 p-2 bg-slate-50 rounded-xl border border-slate-100 flex-wrap">
+        <button type="button" onclick="wrapText('*','*')" class="toolbar-btn font-bold" title="Bold">B</button>
+        <button type="button" onclick="wrapText('_','_')" class="toolbar-btn italic" title="Italic">I</button>
+        <button type="button" onclick="wrapText('~','~')" class="toolbar-btn line-through" title="Strikethrough">S</button>
+        <span class="w-px h-4 bg-slate-200 mx-1"></span>
+        <button type="button" onclick="insertList('bullet')" class="toolbar-btn" title="Bullet List">• List</button>
+        <button type="button" onclick="insertList('number')" class="toolbar-btn" title="Numbered List">1. List</button>
+        <button type="button" onclick="insertText('━━━━━━━━━━━━━━━━━━━━')" class="toolbar-btn" title="Divider Line">— Line</button>
+        <span class="w-px h-4 bg-slate-200 mx-1"></span>
+        <select onchange="if(this.value){insertTemplate(this.value);this.selectedIndex=0;}" class="toolbar-btn bg-white border border-slate-200 text-primary font-semibold pr-6">
+          <option value="">📋 Templates</option>
+          <option value="document">📄 Document</option>
+          <option value="order">📦 Order</option>
+          <option value="invoice">🧾 Invoice</option>
+          <option value="welcome">👋 Welcome</option>
+          <option value="support">🛠️ Support</option>
+          <option value="appointment">📅 Appointment</option>
+          <option value="promo">🎉 Promotion</option>
+          <option value="feedback">⭐ Feedback</option>
+        </select>
+      </div>
+
+      <textarea id="reply-text" rows="10" oninput="updatePreview()"
+        placeholder="📝 Start typing your message...&#10;&#10;Use *bold*, _italic_, ~strikethrough~&#10;The preview will update in real-time →"
+        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none font-mono text-[13px] leading-relaxed"></textarea>
+
+      <!-- Media Attachment -->
+      <div class="border-t border-slate-100 pt-4">
+        <p class="text-xs font-bold uppercase tracking-widest text-outline mb-3 flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm">attach_file</span> Media Attachment (Optional)
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-on-surface mb-1">Media URL</label>
+            <input type="url" id="media-url" placeholder="https://example.com/file.pdf" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-on-surface mb-1">Filename</label>
+            <input type="text" id="media-filename" placeholder="catalog.pdf" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ MENU EDITOR (hidden by default) ═══════ -->
+    <div id="menu-editor" class="hidden space-y-5">
+      <!-- Menu Header -->
+      <div class="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-5 space-y-4">
+        <h2 class="text-sm font-headline font-bold text-primary flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm">list_alt</span> Menu Header
+        </h2>
+        <div>
+          <label class="block text-xs font-semibold text-on-surface mb-1.5">Header Text (Optional)</label>
+          <input type="text" id="menu-header" placeholder="Leave empty to use rule name as header" oninput="updatePreview()" class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all">
+        </div>
+      </div>
+
+      <!-- Menu Items List -->
+      <div class="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-headline font-bold text-primary flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">format_list_numbered</span> Menu Items
+          </h2>
+          <span id="items-count" class="text-[10px] font-bold text-on-surface-variant bg-surface-container-high px-2.5 py-1 rounded-full">0 items</span>
+        </div>
+
+        <div id="menu-items-list" class="space-y-3">
+          <div class="text-center py-6 text-slate-400">
+            <span class="material-symbols-outlined text-3xl mb-1 block">playlist_add</span>
+            <p class="text-sm">No items yet. Add your first menu option below.</p>
+          </div>
+        </div>
+
+        <!-- Add Item Form -->
+        <div class="border-t border-slate-100 pt-4 space-y-3">
+          <p class="text-xs font-bold uppercase tracking-widest text-outline flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">add_circle</span> Add Menu Item
+          </p>
+          <div class="grid grid-cols-12 gap-2">
+            <input type="number" id="new-item-number" placeholder="#" min="1" class="col-span-2 px-3 py-2.5 border border-slate-200 rounded-xl text-center text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" value="1">
+            <input type="text" id="new-item-label" placeholder="Option label (e.g., Product Info)" class="col-span-4 px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <input type="text" id="new-item-reply" placeholder="Reply text when selected" class="col-span-5 px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <button onclick="addMenuItem()" class="col-span-1 bg-primary text-white rounded-xl flex items-center justify-center hover:bg-emerald-800 active:scale-95 transition-all">
+              <span class="material-symbols-outlined text-sm">add</span>
+            </button>
+          </div>
+          <div class="grid grid-cols-12 gap-2">
+            <div class="col-span-2"></div>
+            <input type="url" id="new-item-media-url" placeholder="Media URL (optional)" class="col-span-5 px-3 py-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <input type="text" id="new-item-media-filename" placeholder="Filename" class="col-span-5 px-3 py-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/30">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- RIGHT PANEL: WhatsApp Preview -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="lg:w-[340px] flex-shrink-0 lg:sticky lg:top-20 self-start">
+    <div class="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="text-sm font-headline font-bold text-primary flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm">smartphone</span> WhatsApp Preview
+        </h2>
+        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Live</span>
+      </div>
+
+      <!-- Phone Mock -->
+      <div class="wa-bg" style="min-height: 420px; max-height: 70vh; overflow-y: auto;">
+        <!-- WA Header -->
+        <div class="bg-[#075e54] text-white px-4 py-2.5 flex items-center gap-3 sticky top-0 z-10">
+          <span class="material-symbols-outlined text-lg">arrow_back</span>
+          <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+            <span class="material-symbols-outlined text-white text-base">smart_toy</span>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-semibold leading-tight">Your Bot</p>
+            <p class="text-[10px] opacity-70">online</p>
+          </div>
+        </div>
+
+        <!-- Chat Messages -->
+        <div id="preview-chat" class="p-3 space-y-2">
+          <!-- Incoming trigger message -->
+          <div class="flex justify-end">
+            <div class="bg-[#d9fdd3] rounded-lg rounded-tr-none px-3 py-2 shadow-sm max-w-[80%]">
+              <p id="preview-trigger" class="text-[13px] text-gray-900" style="font-family: 'Segoe UI', sans-serif;">pdf</p>
+              <div class="flex justify-end mt-0.5">
+                <span class="text-[10px] text-gray-500">10:29 AM ✓✓</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bot reply bubble -->
+          <div class="flex justify-start">
+            <div class="bg-white rounded-lg rounded-tl-none px-3 py-2 shadow-sm max-w-[85%]">
+              <div id="preview-reply" class="text-[13px] text-gray-900 leading-relaxed whitespace-pre-wrap break-words" style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif;">
+                <span class="text-slate-400 italic text-[11px]">Start typing to see preview...</span>
+              </div>
+              <div class="flex justify-end mt-0.5">
+                <span class="text-[10px] text-gray-500">10:30 AM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Menu flow: user selects option (only for menu type) -->
+          <div id="preview-menu-flow" class="hidden space-y-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+let editingRuleId = null;
+let menuItems = []; // local array for menu items
+
+// ─── Init: Load rule if editing ──────────────────
+const urlParams = new URLSearchParams(window.location.search);
+const ruleId = urlParams.get('id');
+
+if (ruleId) {
+  editingRuleId = parseInt(ruleId);
+  loadExistingRule(editingRuleId);
+}
+
+async function loadExistingRule(id) {
+  try {
+    const res = await fetch(`/api/auto-replies/get?id=${id}`);
+    const data = await res.json();
+    if (!data.success) { alert('Rule not found'); window.location.href = '/auto-replies'; return; }
+    const rule = data.rule;
+    document.getElementById('page-title').textContent = `Editing: ${rule.name}`;
+    document.getElementById('rule-name').value = rule.name;
+    document.getElementById('rule-keywords').value = rule.keywords;
+    document.querySelector(`input[name="rule-type"][value="${rule.rule_type || 'simple'}"]`).checked = true;
+    document.querySelector(`input[name="match-mode"][value="${rule.match_mode || 'all'}"]`).checked = true;
+    document.getElementById('rule-active').checked = rule.is_active;
+    document.getElementById('active-section').classList.remove('hidden');
+
+    if (rule.rule_type === 'menu') {
+      document.getElementById('simple-editor').classList.add('hidden');
+      document.getElementById('menu-editor').classList.remove('hidden');
+      document.getElementById('menu-header').value = rule.reply_text || '';
+      if (data.items) {
+        menuItems = data.items;
+        renderMenuItems();
+      }
+    } else {
+      document.getElementById('reply-text').value = rule.reply_text || '';
+      document.getElementById('media-url').value = rule.media_url || '';
+      document.getElementById('media-filename').value = rule.media_filename || '';
+    }
+    updatePreview();
+  } catch(e) { console.error(e); }
+}
+
+// ─── Rule Type Toggle ────────────────────────────
+document.querySelectorAll('input[name="rule-type"]').forEach(r => {
+  r.addEventListener('change', () => {
+    const isMenu = r.value === 'menu';
+    document.getElementById('simple-editor').classList.toggle('hidden', isMenu);
+    document.getElementById('menu-editor').classList.toggle('hidden', !isMenu);
+    updatePreview();
+  });
+});
+
+document.querySelectorAll('input[name="match-mode"]').forEach(r => { r.addEventListener('change', updatePreview); });
+document.getElementById('rule-keywords').addEventListener('input', () => {
+  const kw = document.getElementById('rule-keywords').value.split(',')[0]?.trim() || 'hello';
+  document.getElementById('preview-trigger').textContent = kw;
+});
+
+// ─── Save Rule ───────────────────────────────────
+async function saveAndBack() {
+  const name = document.getElementById('rule-name').value.trim();
+  const keywords = document.getElementById('rule-keywords').value.trim();
+  const ruleType = document.querySelector('input[name="rule-type"]:checked').value;
+  const matchMode = document.querySelector('input[name="match-mode"]:checked').value;
+
+  if (!name || !keywords) { alert('Name and keywords are required'); return; }
+
+  let replyText, mediaUrl, mediaFilename;
+  if (ruleType === 'menu') {
+    replyText = document.getElementById('menu-header').value.trim();
+    mediaUrl = ''; mediaFilename = '';
+  } else {
+    replyText = document.getElementById('reply-text').value.trim();
+    mediaUrl = document.getElementById('media-url').value.trim();
+    mediaFilename = document.getElementById('media-filename').value.trim();
+    if (!replyText && !mediaUrl) { alert('Please provide a reply message or media URL'); return; }
+  }
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">progress_activity</span> Saving...';
+
+  try {
+    let url, body;
+    if (editingRuleId) {
+      url = '/api/auto-replies/update';
+      body = { id: editingRuleId, name, keywords, reply_text: replyText, media_url: mediaUrl, media_filename: mediaFilename, match_mode: matchMode, rule_type: ruleType, is_active: document.getElementById('rule-active').checked };
+    } else {
+      url = '/api/auto-replies/create';
+      body = { name, keywords, reply_text: replyText, media_url: mediaUrl, media_filename: mediaFilename, match_mode: matchMode, rule_type: ruleType };
+    }
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (data.success) {
+      // If new menu rule, save menu items
+      if (!editingRuleId && ruleType === 'menu' && menuItems.length > 0) {
+        const newId = data.id;
+        for (const item of menuItems) {
+          await fetch('/api/menu-items/create', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rule_id: newId, option_number: item.option_number, label: item.label, reply_text: item.reply_text, media_url: item.media_url || '', media_filename: item.media_filename || '' })
+          });
+        }
+      }
+      window.location.href = '/auto-replies';
+    } else {
+      alert('Error: ' + (data.error || 'Unknown error'));
+    }
+  } catch(e) { alert('Save failed: ' + e.message); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined text-sm">save</span> Save Rule';
+  }
+}
+
+// ─── Menu Items CRUD ─────────────────────────────
+function renderMenuItems() {
+  const list = document.getElementById('menu-items-list');
+  const count = document.getElementById('items-count');
+  count.textContent = `${menuItems.length} item${menuItems.length !== 1 ? 's' : ''}`;
+  document.getElementById('new-item-number').value = menuItems.length + 1;
+
+  if (menuItems.length === 0) {
+    list.innerHTML = '<div class="text-center py-6 text-slate-400"><span class="material-symbols-outlined text-3xl mb-1 block">playlist_add</span><p class="text-sm">No items yet. Add your first menu option below.</p></div>';
+    updatePreview();
+    return;
+  }
+
+  list.innerHTML = menuItems.map((item, idx) => `
+    <div class="menu-item-card">
+      <div class="flex items-start gap-3">
+        <div class="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+          <span class="text-sm font-bold text-primary">${item.option_number}</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-sm text-on-surface">${esc(item.label)}</p>
+          ${item.reply_text ? `<p class="text-xs text-outline mt-1 line-clamp-2">💬 ${esc(item.reply_text).substring(0, 80)}${item.reply_text.length > 80 ? '...' : ''}</p>` : ''}
+          ${item.media_url ? `<p class="text-xs text-outline mt-0.5">📎 ${esc(item.media_filename || 'Media')}</p>` : ''}
+        </div>
+        <button onclick="deleteMenuItem(${idx})" class="text-slate-400 hover:text-error p-1.5 rounded-lg hover:bg-error/5 transition-all shrink-0">
+          <span class="material-symbols-outlined text-sm">delete</span>
+        </button>
+      </div>
+    </div>
+  `).join('');
+  updatePreview();
+}
+
+async function addMenuItem() {
+  const optNum = parseInt(document.getElementById('new-item-number').value);
+  const label = document.getElementById('new-item-label').value.trim();
+  const replyText = document.getElementById('new-item-reply').value.trim();
+  const mediaUrl = document.getElementById('new-item-media-url').value.trim();
+  const mediaFilename = document.getElementById('new-item-media-filename').value.trim();
+
+  if (!label || isNaN(optNum)) { alert('Option number and label are required'); return; }
+  if (!replyText && !mediaUrl) { alert('Reply text or media URL is required'); return; }
+
+  const item = { option_number: optNum, label, reply_text: replyText, media_url: mediaUrl, media_filename: mediaFilename };
+
+  // If editing existing rule, save to server immediately
+  if (editingRuleId) {
+    try {
+      const res = await fetch('/api/menu-items/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rule_id: editingRuleId, ...item })
+      });
+      const data = await res.json();
+      if (!data.success) { alert('Error: ' + data.error); return; }
+      item.id = data.id;
+    } catch(e) { alert('Failed: ' + e.message); return; }
+  }
+
+  menuItems.push(item);
+  document.getElementById('new-item-label').value = '';
+  document.getElementById('new-item-reply').value = '';
+  document.getElementById('new-item-media-url').value = '';
+  document.getElementById('new-item-media-filename').value = '';
+  renderMenuItems();
+}
+
+async function deleteMenuItem(idx) {
+  if (!confirm('Delete this menu item?')) return;
+  const item = menuItems[idx];
+  if (item.id && editingRuleId) {
+    try {
+      await fetch('/api/menu-items/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: item.id }) });
+    } catch(e) { /* ignore */ }
+  }
+  menuItems.splice(idx, 1);
+  renderMenuItems();
+}
+
+// ─── Formatting Helpers ──────────────────────────
+function getActiveTextarea() {
+  const ruleType = document.querySelector('input[name="rule-type"]:checked').value;
+  return ruleType === 'menu' ? null : document.getElementById('reply-text');
+}
+
+function wrapText(before, after) {
+  const ta = document.getElementById('reply-text');
+  if (!ta) return;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const selected = ta.value.substring(start, end);
+  if (selected) {
+    ta.value = ta.value.substring(0, start) + before + selected + after + ta.value.substring(end);
+    ta.selectionStart = start + before.length;
+    ta.selectionEnd = end + before.length;
+  } else {
+    ta.value = ta.value.substring(0, start) + before + 'text' + after + ta.value.substring(end);
+    ta.selectionStart = start + before.length;
+    ta.selectionEnd = start + before.length + 4;
+  }
+  ta.focus(); updatePreview();
+}
+
+function insertText(text) {
+  const ta = document.getElementById('reply-text');
+  if (!ta) return;
+  const pos = ta.selectionStart;
+  const prefix = pos > 0 && ta.value[pos-1] !== '\n' ? '\n' : '';
+  ta.value = ta.value.substring(0, pos) + prefix + text + '\n' + ta.value.substring(pos);
+  ta.focus(); updatePreview();
+}
+
+function insertList(type) {
+  const ta = document.getElementById('reply-text');
+  if (!ta) return;
+  const pos = ta.selectionStart;
+  const prefix = pos > 0 && ta.value[pos-1] !== '\n' ? '\n' : '';
+  const list = type === 'bullet' ? prefix + '• Item 1\n• Item 2\n• Item 3\n' : prefix + '1. First point\n2. Second point\n3. Third point\n';
+  ta.value = ta.value.substring(0, pos) + list + ta.value.substring(pos);
+  ta.focus(); updatePreview();
+}
+
+const templates = {
+  document: `📄 *Document Shared*\n━━━━━━━━━━━━━━━━━━━━\n\nHere's the document you requested.\n\n📌 *What's Inside:*\n   • Complete documentation\n   • Supporting attachments\n   • Reference materials\n\n💡 *Quick Access:*\n   Open the file above to view all details.\n\n📞 *Questions?*\n   Simply reply to this message —\n   our team responds within minutes.\n\n━━━━━━━━━━━━━━━━━━━━\n_Powered by ERPAGENT_ ⚡`,
+  order: `📦 *Order Confirmed!*\n━━━━━━━━━━━━━━━━━━━━\n\n✅ Thank you — your order is locked in.\n\n🔖 *Order Summary*\n┌─────────────────────\n│  Item:    [Product Name]\n│  Qty:      [Quantity]\n│  Price:   ₹[Amount]\n│  Status:  ✅ Confirmed\n└─────────────────────\n\n🚚 *Delivery Timeline*\n   📍 Estimated: 3–5 business days\n   📦 Tracking link will be shared\n\n💳 *Payment:* Received ✓\n\n━━━━━━━━━━━━━━━━━━━━\n_Need to modify? Reply within 1 hour._ ⏰`,
+  invoice: `🧾 *Invoice / Receipt*\n━━━━━━━━━━━━━━━━━━━━\n\n📋 *Invoice No:* #[INV-0001]\n📅 *Date:* [Date]\n👤 *Customer:* [Name]\n\n┌─────────────────────\n│  Description     Qty    Amount\n│  ─────────────────────\n│  [Item 1]          1     ₹[Amt]\n│  [Item 2]          1     ₹[Amt]\n│  ─────────────────────\n│  *Subtotal:*            ₹[Amt]\n│  *Tax (GST):*          ₹[Amt]\n│  ─────────────────────\n│  *TOTAL:*              *₹[Amt]*\n└─────────────────────\n\n💳 *Payment:* [Method]\n\n━━━━━━━━━━━━━━━━━━━━\n_Thank you for your business!_ 🙏`,
+  welcome: `👋 *Welcome to [Business Name]!*\n━━━━━━━━━━━━━━━━━━━━\n\nWe're glad you're here! 🎉\n\n*How can we assist you today?*\n\n1️⃣  📋  Product Catalog\n2️⃣  🛒  Place an Order\n3️⃣  📦  Track My Order\n4️⃣  🛠️  Get Support\n5️⃣  📞  Talk to a Human\n\n💬 _Simply reply with a number_\n   _to get started instantly._\n\n━━━━━━━━━━━━━━━━━━━━\n⏰ *Hours:* Mon–Sat, 9 AM – 6 PM`,
+  support: `🛠️ *Support Ticket Created*\n━━━━━━━━━━━━━━━━━━━━\n\nWe've received your message and a\nsupport ticket has been created.\n\n🎫 *Ticket:* #[AUTO]\n📋 *Priority:* Standard\n⏰ *Response:* Within 2 hours\n\n📝 *While You Wait:*\n   • Check our FAQ: [link]\n   • Browse help docs: [link]\n\n🔔 You'll receive updates right here\n   as our team works on your request.\n\n━━━━━━━━━━━━━━━━━━━━\n_Your satisfaction is our priority._ ❤️`,
+  appointment: `📅 *Appointment Confirmation*\n━━━━━━━━━━━━━━━━━━━━\n\nYour appointment has been booked! ✅\n\n📋 *Details:*\n┌─────────────────────\n│  📅  Date:    [Date]\n│  🕐  Time:   [Time]\n│  📍  Venue:  [Location]\n│  👤  With:    [Person]\n└─────────────────────\n\n⚠️ *Important:*\n   • Arrive 10 mins early\n   • Bring relevant documents\n   • Reply *CANCEL* to cancel\n\n━━━━━━━━━━━━━━━━━━━━\n_See you there!_ 👋`,
+  promo: `🎉 *EXCLUSIVE OFFER*\n━━━━━━━━━━━━━━━━━━━━\n\n🔥 *Flash Sale — Limited Time Only!*\n\n┌─────────────────────\n│\n│  💰 *FLAT 20% OFF*\n│     on ALL products!\n│\n│  🎟️ Code: *SAVE20*\n│  📦 Min order: ₹500\n│  ⏰ Valid till: [Date]\n│\n└─────────────────────\n\n✅ *How to Order:*\n   1. Browse our catalog\n   2. Reply with item name\n   3. Apply code at checkout\n\n🛒 _Don't miss out — limited stock!_\n\n━━━━━━━━━━━━━━━━━━━━\n_T&C apply._`,
+  feedback: `⭐ *We'd Love Your Feedback!*\n━━━━━━━━━━━━━━━━━━━━\n\nHi! We hope you had a great\nexperience with us. 😊\n\n*How would you rate our service?*\n\n1️⃣  ⭐          Poor\n2️⃣  ⭐⭐       Below Average\n3️⃣  ⭐⭐⭐    Good\n4️⃣  ⭐⭐⭐⭐  Very Good\n5️⃣  ⭐⭐⭐⭐⭐ Excellent!\n\n💬 _Reply with a number (1–5)_\n\n━━━━━━━━━━━━━━━━━━━━\n_Every response is valued._ 🙏`
+};
+
+function insertTemplate(type) {
+  const ta = document.getElementById('reply-text');
+  if (!ta) return;
+  ta.value = templates[type] || '';
+  ta.focus(); updatePreview();
+}
+
+// ─── Live Preview ────────────────────────────────
+function renderWAFormat(text) {
+  let html = esc(text);
+  html = html.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+  html = html.replace(/\_(.*?)\_/g, '<em>$1</em>');
+  html = html.replace(/\~(.*?)\~/g, '<del>$1</del>');
+  html = html.replace(/\`\`\`(.*?)\`\`\`/g, '<code style="background:#f0f0f0;padding:1px 4px;border-radius:3px;font-size:11px;">$1</code>');
+  return html;
+}
+
+const numEmoji = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣'];
+
+function updatePreview() {
+  const ruleType = document.querySelector('input[name="rule-type"]:checked').value;
+  const preview = document.getElementById('preview-reply');
+  const flowDiv = document.getElementById('preview-menu-flow');
+
+  // Update trigger keyword
+  const kw = document.getElementById('rule-keywords').value.split(',')[0]?.trim() || 'hello';
+  document.getElementById('preview-trigger').textContent = kw;
+
+  if (ruleType === 'simple') {
+    const text = document.getElementById('reply-text').value;
+    flowDiv.classList.add('hidden');
+    flowDiv.innerHTML = '';
+    if (!text.trim()) {
+      preview.innerHTML = '<span class="text-slate-400 italic text-[11px]">Start typing to see preview...</span>';
+      return;
+    }
+    let html = renderWAFormat(text);
+    // Show media indicator
+    const mediaUrl = document.getElementById('media-url').value.trim();
+    if (mediaUrl) {
+      const fn = document.getElementById('media-filename').value.trim() || 'attachment';
+      html = `<div style="background:#f0f4f0;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px;"><span style="font-size:20px;">📎</span><div><p style="font-size:11px;font-weight:600;">${esc(fn)}</p><p style="font-size:10px;color:#667;">Document</p></div></div>` + html;
+    }
+    preview.innerHTML = html;
+  } else {
+    // Menu preview
+    const header = document.getElementById('menu-header').value.trim();
+    const ruleName = document.getElementById('rule-name').value.trim() || 'Menu';
+
+    let menuText = '';
+    if (header) menuText += header + '\n';
+    else menuText += `📋 *${ruleName}*\n`;
+    menuText += '━━━━━━━━━━━━━━━━━━━━\n\n';
+    for (const item of menuItems) {
+      const emoji = item.option_number >= 0 && item.option_number < numEmoji.length ? numEmoji[item.option_number] : `(${item.option_number})`;
+      menuText += `${emoji}  ${item.label}\n`;
+    }
+    if (menuItems.length > 0) {
+      menuText += '\n💬 _Reply with a number to continue._';
+    } else {
+      menuText += '\n_No items added yet._';
+    }
+    preview.innerHTML = renderWAFormat(menuText);
+
+    // Show flow simulation for first item
+    flowDiv.innerHTML = '';
+    if (menuItems.length > 0) {
+      flowDiv.classList.remove('hidden');
+      const firstItem = menuItems[0];
+
+      // User selects "1"
+      flowDiv.innerHTML += `
+        <div class="flex justify-end">
+          <div class="bg-[#d9fdd3] rounded-lg rounded-tr-none px-3 py-2 shadow-sm max-w-[80%]">
+            <p class="text-[13px] text-gray-900" style="font-family:'Segoe UI',sans-serif;">${firstItem.option_number}</p>
+            <div class="flex justify-end mt-0.5"><span class="text-[10px] text-gray-500">10:31 AM ✓✓</span></div>
+          </div>
+        </div>`;
+
+      // Bot replies with item content
+      let itemReply = '';
+      if (firstItem.media_url) {
+        const fn = firstItem.media_filename || 'attachment';
+        itemReply += `<div style="background:#f0f4f0;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px;"><span style="font-size:20px;">📎</span><div><p style="font-size:11px;font-weight:600;">${esc(fn)}</p><p style="font-size:10px;color:#667;">Document</p></div></div>`;
+      }
+      if (firstItem.reply_text) {
+        itemReply += renderWAFormat(firstItem.reply_text);
+      }
+      if (itemReply) {
+        flowDiv.innerHTML += `
+          <div class="flex justify-start">
+            <div class="bg-white rounded-lg rounded-tl-none px-3 py-2 shadow-sm max-w-[85%]">
+              <div class="text-[13px] text-gray-900 leading-relaxed whitespace-pre-wrap break-words" style="font-family:'Segoe UI',Helvetica,Arial,sans-serif;">${itemReply}</div>
+              <div class="flex justify-end mt-0.5"><span class="text-[10px] text-gray-500">10:31 AM</span></div>
+            </div>
+          </div>`;
+      }
+
+      // Label
+      flowDiv.innerHTML += `<p class="text-center text-[9px] text-slate-400 py-1">↑ Flow preview: option ${firstItem.option_number} selected</p>`;
+    } else {
+      flowDiv.classList.add('hidden');
+    }
+  }
+}
+
+function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+// Init preview
+updatePreview();
+</script>
+</body></html>
