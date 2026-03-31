@@ -152,19 +152,68 @@
       <!-- Simple Reply Fields -->
       <div id="simple-fields">
         <div class="mb-4">
-          <label class="block text-sm font-semibold text-on-surface mb-2">Reply Message</label>
-          <!-- Formatting Toolbar -->
-          <div class="flex items-center gap-1 mb-1.5 p-1.5 bg-slate-50 rounded-t-xl border border-b-0 border-slate-200">
-            <button type="button" onclick="wrapText('*','*')" class="px-2 py-1 text-xs font-bold text-slate-600 hover:bg-white rounded transition-all" title="Bold">B</button>
-            <button type="button" onclick="wrapText('_','_')" class="px-2 py-1 text-xs italic text-slate-600 hover:bg-white rounded transition-all" title="Italic">I</button>
-            <button type="button" onclick="wrapText('~','~')" class="px-2 py-1 text-xs line-through text-slate-600 hover:bg-white rounded transition-all" title="Strikethrough">S</button>
-            <span class="w-px h-4 bg-slate-300 mx-1"></span>
-            <button type="button" onclick="insertList('bullet')" class="px-2 py-1 text-xs text-slate-600 hover:bg-white rounded transition-all" title="Bullet List">• List</button>
-            <button type="button" onclick="insertList('number')" class="px-2 py-1 text-xs text-slate-600 hover:bg-white rounded transition-all" title="Numbered List">1. List</button>
-            <span class="w-px h-4 bg-slate-300 mx-1"></span>
-            <button type="button" onclick="insertTemplate()" class="px-2 py-1 text-xs text-primary font-semibold hover:bg-primary/5 rounded transition-all" title="Professional Template">📋 Template</button>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-sm font-semibold text-on-surface">Reply Message</label>
+            <button type="button" onclick="togglePreview()" class="text-xs text-primary font-semibold hover:underline flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">visibility</span>
+              <span id="preview-toggle-text">Show Preview</span>
+            </button>
           </div>
-          <textarea id="edit-reply-text" rows="6" placeholder="📝 Type your message here...&#10;&#10;Use *bold*, _italic_, ~strikethrough~&#10;WhatsApp will render the formatting!" class="w-full px-4 py-3 border border-slate-200 rounded-b-xl rounded-t-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none font-mono text-[13px] leading-relaxed"></textarea>
+
+          <!-- Editor + Preview Container -->
+          <div id="editor-container" class="flex gap-3">
+            <!-- Left: Editor -->
+            <div class="flex-1 min-w-0">
+              <!-- Formatting Toolbar -->
+              <div class="flex items-center gap-1 p-1.5 bg-slate-50 rounded-t-xl border border-b-0 border-slate-200 flex-wrap">
+                <button type="button" onclick="wrapText('*','*')" class="px-2 py-1 text-xs font-bold text-slate-600 hover:bg-white rounded transition-all" title="Bold">B</button>
+                <button type="button" onclick="wrapText('_','_')" class="px-2 py-1 text-xs italic text-slate-600 hover:bg-white rounded transition-all" title="Italic">I</button>
+                <button type="button" onclick="wrapText('~','~')" class="px-2 py-1 text-xs line-through text-slate-600 hover:bg-white rounded transition-all" title="Strikethrough">S</button>
+                <span class="w-px h-4 bg-slate-300 mx-0.5"></span>
+                <button type="button" onclick="insertList('bullet')" class="px-2 py-1 text-xs text-slate-600 hover:bg-white rounded transition-all" title="Bullet List">• List</button>
+                <button type="button" onclick="insertList('number')" class="px-2 py-1 text-xs text-slate-600 hover:bg-white rounded transition-all" title="Numbered List">1. List</button>
+                <button type="button" onclick="insertText('━━━━━━━━━━━━━━━')" class="px-2 py-1 text-xs text-slate-600 hover:bg-white rounded transition-all" title="Divider">— Line</button>
+                <span class="w-px h-4 bg-slate-300 mx-0.5"></span>
+                <select onchange="if(this.value)insertTemplate(this.value);this.selectedIndex=0;" class="text-xs bg-white border border-slate-200 rounded px-2 py-1 text-primary font-semibold cursor-pointer">
+                  <option value="">📋 Templates</option>
+                  <option value="document">📄 Document Share</option>
+                  <option value="order">📦 Order Confirmation</option>
+                  <option value="welcome">👋 Welcome Message</option>
+                  <option value="support">🛠️ Support Reply</option>
+                  <option value="promo">🎉 Promotion</option>
+                </select>
+              </div>
+              <textarea id="edit-reply-text" rows="8" oninput="updatePreview()" placeholder="📝 Type your message here...&#10;&#10;Use *bold*, _italic_, ~strikethrough~&#10;WhatsApp will render the formatting!" class="w-full px-4 py-3 border border-slate-200 rounded-b-xl rounded-t-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-none font-mono text-[13px] leading-relaxed"></textarea>
+            </div>
+
+            <!-- Right: Live Preview (hidden by default) -->
+            <div id="preview-panel" class="hidden w-64 flex-shrink-0">
+              <div class="rounded-2xl border border-slate-200 overflow-hidden shadow-sm h-full flex flex-col" style="background:#efeae2; background-image: url(&quot;data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23c8c3b8' fill-opacity='0.12'%3E%3Cpath d='M20 20v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4z'/%3E%3C/g%3E%3C/svg%3E&quot;);">
+                <!-- Phone Header -->
+                <div class="bg-[#075e54] text-white px-3 py-2 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-sm">arrow_back</span>
+                  <div class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white text-xs">smart_toy</span>
+                  </div>
+                  <div>
+                    <p class="text-xs font-semibold leading-none">Your Bot</p>
+                    <p class="text-[9px] opacity-70">online</p>
+                  </div>
+                </div>
+                <!-- Message Bubble -->
+                <div class="flex-1 p-3 overflow-y-auto">
+                  <div class="bg-white rounded-lg rounded-tl-none px-3 py-2 shadow-sm max-w-full">
+                    <div id="wa-preview" class="text-[12.5px] text-gray-900 leading-relaxed whitespace-pre-wrap break-words" style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif;">
+                      <span class="text-slate-400 italic text-[11px]">Start typing to see preview...</span>
+                    </div>
+                    <div class="flex justify-end mt-1">
+                      <span class="text-[9px] text-gray-500">10:30 AM</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
           <p class="text-[11px] text-slate-400 mt-1.5">💡 <strong>*bold*</strong> &nbsp; <em>_italic_</em> &nbsp; <del>~strikethrough~</del> &nbsp; Use line breaks for lists.</p>
         </div>
         <div class="border-t border-slate-100 pt-4">
@@ -532,6 +581,17 @@ function wrapText(before, after) {
     ta.selectionEnd = start + before.length + 4;
   }
   ta.focus();
+  updatePreview();
+}
+
+function insertText(text) {
+  const ta = document.getElementById('edit-reply-text');
+  const pos = ta.selectionStart;
+  const prefix = pos > 0 && ta.value[pos-1] !== '\n' ? '\n' : '';
+  ta.value = ta.value.substring(0, pos) + prefix + text + '\n' + ta.value.substring(pos);
+  ta.selectionStart = ta.selectionEnd = pos + prefix.length + text.length + 1;
+  ta.focus();
+  updatePreview();
 }
 
 function insertList(type) {
@@ -547,23 +607,119 @@ function insertList(type) {
   ta.value = ta.value.substring(0, pos) + list + ta.value.substring(pos);
   ta.selectionStart = ta.selectionEnd = pos + list.length;
   ta.focus();
+  updatePreview();
 }
 
-function insertTemplate() {
-  const ta = document.getElementById('edit-reply-text');
-  const template = `📄 *Document Details*
+const templates = {
+  document: `📄 *Document Shared*
 ━━━━━━━━━━━━━━━━━
 
 📌 *What's Included:*
-• Item description here
-• Another item detail
+• Complete details & documentation
+• All relevant attachments
 
-📞 *Contact Us:*
-For any queries, reach out to us.
+📞 *Need Help?*
+Reply to this message for assistance.
 
-_Thank you for choosing our service!_ ✨`;
-  ta.value = template;
+_Thank you for choosing our service!_ ✨`,
+
+  order: `📦 *Order Confirmation*
+━━━━━━━━━━━━━━━━━
+
+✅ Your order has been received!
+
+🔖 *Order Details:*
+• Item: [Product Name]
+• Qty: [Quantity]
+• Total: ₹[Amount]
+
+🚚 *Delivery:*
+Expected within 3-5 business days.
+
+_Thank you for your purchase!_ 🙏`,
+
+  welcome: `👋 *Welcome!*
+━━━━━━━━━━━━━━━━━
+
+Thank you for reaching out to us!
+
+*How can we help you today?*
+
+1️⃣ Product Information
+2️⃣ Place an Order
+3️⃣ Track Delivery
+4️⃣ Support
+
+_Reply with a number to get started._`,
+
+  support: `🛠️ *Support Response*
+━━━━━━━━━━━━━━━━━
+
+Thank you for contacting support.
+
+We've received your query and our team is looking into it.
+
+⏰ *Expected Response Time:*
+Within 24 hours
+
+📧 For urgent issues, email us at:
+support@example.com
+
+_We appreciate your patience!_`,
+
+  promo: `🎉 *Special Offer!*
+━━━━━━━━━━━━━━━━━
+
+🔥 *Limited Time Deal*
+
+Get *20% OFF* on all products!
+
+📋 *How to Avail:*
+• Use code: *SAVE20*
+• Min order: ₹500
+• Valid till: [Date]
+
+🛒 Order now before it's gone!
+
+_Terms & conditions apply._`
+};
+
+function insertTemplate(type) {
+  const ta = document.getElementById('edit-reply-text');
+  ta.value = templates[type] || '';
   ta.focus();
+  updatePreview();
+}
+
+// ─── Live Preview ───────────────────────────────
+function updatePreview() {
+  const text = document.getElementById('edit-reply-text').value;
+  const preview = document.getElementById('wa-preview');
+  if (!text.trim()) {
+    preview.innerHTML = '<span class="text-slate-400 italic text-[11px]">Start typing to see preview...</span>';
+    return;
+  }
+  // Render WhatsApp formatting
+  let html = esc(text);
+  // Bold *text*
+  html = html.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+  // Italic _text_
+  html = html.replace(/\_(.*?)\_/g, '<em>$1</em>');
+  // Strikethrough ~text~
+  html = html.replace(/\~(.*?)\~/g, '<del>$1</del>');
+  // Monospace ```text```
+  html = html.replace(/\`\`\`(.*?)\`\`\`/g, '<code class="bg-slate-100 px-1 rounded text-[11px]">$1</code>');
+
+  preview.innerHTML = html;
+}
+
+function togglePreview() {
+  const panel = document.getElementById('preview-panel');
+  const btn = document.getElementById('preview-toggle-text');
+  const isHidden = panel.classList.contains('hidden');
+  panel.classList.toggle('hidden');
+  btn.textContent = isHidden ? 'Hide Preview' : 'Show Preview';
+  if (isHidden) updatePreview();
 }
 </script>
 </body></html>
