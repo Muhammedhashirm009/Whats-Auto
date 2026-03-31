@@ -104,8 +104,11 @@
         </div>
         <div id="qr-error" class="hidden w-64 h-64 flex flex-col items-center justify-center gap-4">
           <span class="material-symbols-outlined text-4xl text-error">error</span>
-          <p class="text-sm text-error font-medium">Failed to load QR code</p>
+          <p class="text-sm text-error font-medium text-center">Failed to load QR code</p>
           <button id="retryQRBtn" class="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-semibold">Retry</button>
+          <button id="startQRBtn" class="hidden px-5 py-2.5 bg-primary text-on-primary rounded-lg text-sm font-semibold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
+            <span class="material-symbols-outlined text-sm">qr_code_scanner</span> Start QR Scan
+          </button>
         </div>
       </div>
       <div class="flex items-center gap-2 px-4 py-2 bg-secondary-container/30 rounded-full text-on-secondary-container text-sm font-medium">

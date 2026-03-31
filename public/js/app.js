@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logoutBtn');
     const connectBtn = document.getElementById('connectBtn');
     const retryQRBtn = document.getElementById('retryQRBtn');
+    const startQRBtn = document.getElementById('startQRBtn');
     const connFeedback = document.getElementById('connFeedback');
 
     let isConnected = false;
@@ -155,6 +156,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     case 'waiting':
                         showQRLoading('Generating QR code...');
                         break;
+                    case 'qr_expired':
+                        stopQRPoll();
+                        showQRExpired();
+                        break;
                     default:
                         showQRLoading('Preparing...');
                 }
@@ -188,6 +193,33 @@ document.addEventListener('DOMContentLoaded', () => {
         qrError.classList.remove('hidden');
         const errorText = qrError.querySelector('p');
         if (errorText) errorText.textContent = text || 'Failed to load QR code';
+        // Hide start button, show retry
+        if (startQRBtn) startQRBtn.classList.add('hidden');
+        if (retryQRBtn) retryQRBtn.classList.remove('hidden');
+    }
+
+    function showQRExpired() {
+        qrDisplay.classList.add('hidden');
+        qrLoading.classList.add('hidden');
+        qrError.classList.remove('hidden');
+        const errorText = qrError.querySelector('p');
+        if (errorText) errorText.textContent = 'QR code expired. Click below to generate new codes.';
+        // Show start button, hide retry
+        if (retryQRBtn) retryQRBtn.classList.add('hidden');
+        if (startQRBtn) startQRBtn.classList.remove('hidden');
+    }
+
+    async function triggerStartQR() {
+        showQRLoading('Starting QR scan...');
+        if (startQRBtn) startQRBtn.classList.add('hidden');
+        try {
+            await fetch('/api/start-qr', { method: 'POST' });
+        } catch(e) { /* ignore */ }
+        // Wait a moment for backend to initialize, then start polling
+        setTimeout(() => {
+            qrRetryCount = 0;
+            startQRPoll();
+        }, 2000);
     }
 
     function startQRPoll() {
@@ -298,10 +330,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (retryQRBtn) {
         retryQRBtn.addEventListener('click', () => {
-            qrDisplay.classList.add('hidden');
-            qrError.classList.add('hidden');
-            qrLoading.classList.remove('hidden');
-            fetchQR();
+            triggerStartQR();
+        });
+    }
+
+    if (startQRBtn) {
+        startQRBtn.addEventListener('click', () => {
+            triggerStartQR();
         });
     }
 

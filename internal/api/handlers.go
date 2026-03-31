@@ -232,7 +232,16 @@ func QRHandler(w http.ResponseWriter, r *http.Request) {
 
 	bot.QRMutex.Lock()
 	qr := bot.CurrentQR
+	expired := bot.QRExpired
 	bot.QRMutex.Unlock()
+
+	if expired {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":  "QR code expired. Click 'Start QR Scan' to generate new codes.",
+			"reason": "qr_expired",
+		})
+		return
+	}
 
 	if qr == "" {
 		if !bot.GlobalClient.IsConnected() {
@@ -250,6 +259,22 @@ func QRHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{"code": qr})
+}
+
+// StartQRHandler triggers a new QR scan cycle from the dashboard.
+func StartQRHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	go bot.StartQRScan()
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "QR scan started. New codes will appear shortly.",
+	})
 }
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {

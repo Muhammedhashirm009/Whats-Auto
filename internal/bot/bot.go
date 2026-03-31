@@ -26,6 +26,7 @@ import (
 var GlobalClient *whatsmeow.Client
 var CurrentQR string
 var QRMutex sync.Mutex
+var QRExpired bool
 var container *sqlstore.Container
 
 func EventHandler(evt interface{}) {
@@ -102,6 +103,7 @@ func StartClient() {
 				if evt.Event == "code" {
 					QRMutex.Lock()
 					CurrentQR = evt.Code
+					QRExpired = false
 					QRMutex.Unlock()
 					qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
 					fmt.Println("\nPlease scan the QR code on the web dashboard or here to log in.")
@@ -110,20 +112,20 @@ func StartClient() {
 					if evt.Event == "success" {
 						QRMutex.Lock()
 						CurrentQR = ""
+						QRExpired = false
 						QRMutex.Unlock()
 						loggedIn = true
 					}
 				}
 			}
-			// QR channel closed — if not logged in, retry after a short delay
+			// QR channel closed — if not logged in, mark as expired and stop
 			if !loggedIn {
-				log.Println("QR code expired without scan. Retrying in 5 seconds...")
+				log.Println("QR code expired. Click 'Start QR Scan' in the dashboard to generate new codes.")
 				QRMutex.Lock()
 				CurrentQR = ""
+				QRExpired = true
 				QRMutex.Unlock()
 				client.Disconnect()
-				time.Sleep(5 * time.Second)
-				StartClient()
 			}
 		}()
 	} else {
@@ -164,6 +166,20 @@ func retryConnect(client *whatsmeow.Client) {
 }
 
 func RestartBot() {
+	if GlobalClient != nil {
+		GlobalClient.Disconnect()
+	}
+	StartClient()
+}
+
+// StartQRScan resets the expired state and restarts the client to generate fresh QR codes.
+// Called from the dashboard "Start QR Scan" button.
+func StartQRScan() {
+	QRMutex.Lock()
+	QRExpired = false
+	CurrentQR = ""
+	QRMutex.Unlock()
+
 	if GlobalClient != nil {
 		GlobalClient.Disconnect()
 	}

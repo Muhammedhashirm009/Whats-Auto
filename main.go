@@ -53,6 +53,7 @@ func main() {
 	mux.HandleFunc("/api/logout", api.RequireAPIKey(api.LogoutHandler))
 	mux.HandleFunc("/api/connect", api.RequireAPIKey(api.ConnectHandler))
 	mux.HandleFunc("/api/disconnect", api.RequireAPIKey(api.DisconnectHandler))
+	mux.HandleFunc("/api/start-qr", auth.RequireAuthAPI(api.StartQRHandler))
 
 	// API Key management endpoints — Protected by session auth (dashboard user)
 	mux.HandleFunc("/api/keys", auth.RequireAuthAPI(api.APIKeysListHandler))
