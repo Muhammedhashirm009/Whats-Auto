@@ -51,10 +51,13 @@ func EventHandler(evt interface{}) {
 			fmt.Printf("Received a message from %s: %s\n", senderPhone, msgText)
 
 			// Save incoming message to DB (skip own messages and groups)
-			if v.Info.Sender.Server != types.GroupServer {
-				isOwnMessage := GlobalClient != nil && GlobalClient.Store.ID != nil && senderPhone == GlobalClient.Store.ID.User
-				if !isOwnMessage {
-					db.SaveMessage(senderPhone, "in", msgText, "", "received")
+			if v.Info.Sender.Server != types.GroupServer && v.Info.Chat.Server != types.GroupServer {
+				// Use Chat JID for the phone number — Sender may be a LID (Linked Identity)
+				// which differs from the actual phone. Chat JID always has the real phone.
+				chatPhone := v.Info.Chat.User
+				isOwnMessage := GlobalClient != nil && GlobalClient.Store.ID != nil && chatPhone == GlobalClient.Store.ID.User
+				if !isOwnMessage && chatPhone != "" {
+					db.SaveMessage(chatPhone, "in", msgText, "", "received")
 				}
 			}
 
