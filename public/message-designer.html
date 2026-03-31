@@ -148,9 +148,13 @@
         <span class="w-px h-4 bg-slate-200 mx-1"></span>
         <select onchange="if(this.value){insertTemplate(this.value);this.selectedIndex=0;}" class="toolbar-btn bg-white border border-slate-200 text-primary font-semibold pr-6">
           <option value="">📋 Templates</option>
-          <option value="product">🏷️ Product Intro</option>
-          <option value="catalog">📦 Product Catalog</option>
-          <option value="pricelist">💰 Price List</option>
+          <option value="product">⚡ Inverter Product</option>
+          <option value="catalog">📦 Inverter Packages</option>
+          <option value="pricelist">💰 Inverter Prices</option>
+          <option value="batterylist">🔋 Battery Prices</option>
+          <option value="solarpkg">☀️ Solar Package</option>
+          <option value="service">🔧 AMC / Service</option>
+          <option disabled>──────────</option>
           <option value="document">📄 Document</option>
           <option value="order">📦 Order</option>
           <option value="invoice">🧾 Invoice</option>
@@ -237,9 +241,13 @@
               <span class="w-px h-4 bg-slate-200 mx-0.5"></span>
               <select onchange="if(this.value){insertItemTemplate(this.value);this.selectedIndex=0;}" class="toolbar-btn bg-white border border-slate-200 text-primary font-semibold pr-6">
                 <option value="">📋 Templates</option>
-                <option value="product">🏷️ Product Intro</option>
-                <option value="catalog">📦 Catalog</option>
-                <option value="pricelist">💰 Price List</option>
+                <option value="product">⚡ Inverter</option>
+                <option value="catalog">📦 Packages</option>
+                <option value="pricelist">💰 Inverter Prices</option>
+                <option value="batterylist">🔋 Battery Prices</option>
+                <option value="solarpkg">☀️ Solar</option>
+                <option value="service">🔧 AMC</option>
+                <option disabled>──────────</option>
                 <option value="document">📄 Document</option>
                 <option value="order">📦 Order</option>
                 <option value="invoice">🧾 Invoice</option>
@@ -575,12 +583,19 @@ const templates = {
   promo: `🎉 *EXCLUSIVE OFFER*\n━━━━━━━━━━━━━━━━━━━━\n\n🔥 *Flash Sale — Limited Time Only!*\n\n┌─────────────────────\n│\n│  💰 *FLAT 20% OFF*\n│     on ALL products!\n│\n│  🎟️ Code: *SAVE20*\n│  📦 Min order: ₹500\n│  ⏰ Valid till: [Date]\n│\n└─────────────────────\n\n✅ *How to Order:*\n   1. Browse our catalog\n   2. Reply with item name\n   3. Apply code at checkout\n\n🛒 _Don't miss out — limited stock!_\n\n━━━━━━━━━━━━━━━━━━━━\n_T&C apply._`,
   feedback: `⭐ *We'd Love Your Feedback!*\n━━━━━━━━━━━━━━━━━━━━\n\nHi! We hope you had a great\nexperience with us. 😊\n\n*How would you rate our service?*\n\n1️⃣  ⭐          Poor\n2️⃣  ⭐⭐       Below Average\n3️⃣  ⭐⭐⭐    Good\n4️⃣  ⭐⭐⭐⭐  Very Good\n5️⃣  ⭐⭐⭐⭐⭐ Excellent!\n\n💬 _Reply with a number (1–5)_\n\n━━━━━━━━━━━━━━━━━━━━\n_Every response is valued._ 🙏`,
 
-  product: `🏷️ *[Product Name]*\n━━━━━━━━━━━━━━━━━━━━\n\n✨ _Premium Quality Product_\n\n📝 *Description:*\nBrief description of what this\nproduct is and why it's great.\n\n┌─────────────────────\n│  💰  *Price:*     ₹[Amount]\n│  📦  *Stock:*     ✅ In Stock\n│  🚚  *Delivery:*  2–3 days\n│  ⭐  *Rating:*   4.8/5\n└─────────────────────\n\n📌 *Key Features:*\n   • Feature one\n   • Feature two\n   • Feature three\n\n🛒 *How to Order:*\nReply *BUY* to place your order!\n\n━━━━━━━━━━━━━━━━━━━━\n_Free shipping on orders above ₹999_ 🚛`,
+  product: `🏷️ *[Brand] Inverter — [Model]*\n━━━━━━━━━━━━━━━━━━━━\n\n⚡ _Premium Solar Inverter_\n\n┌─────────────────────\n│  💰  *Price:*       ₹[Amount]\n│  ⚡  *Capacity:*    [X] kVA\n│  🔋  *Battery:*     [X]V / [X]Ah\n│  📦  *Stock:*       ✅ Available\n│  🚚  *Delivery:*    Same Day\n│  🛡️  *Warranty:*   [X] Years\n└─────────────────────\n\n📌 *Key Features:*\n   • Pure Sine Wave Output\n   • LCD Display\n   • Overload & Short Circuit Protection\n   • Smart Battery Charging\n\n📋 *Package Includes:*\n   • Inverter Unit\n   • User Manual & Warranty Card\n\n🛒 Reply *ORDER* to purchase!\n\n━━━━━━━━━━━━━━━━━━━━\n_Free installation within city limits_ 🔧`,
 
-  catalog: `📦 *Our Product Catalog*\n━━━━━━━━━━━━━━━━━━━━\n\nBrowse our top-selling products! 🛍️\n\n*🔥 Best Sellers*\n\n1️⃣  *[Product A]*\n     ₹[Price] — ⭐ 4.9\n\n2️⃣  *[Product B]*\n     ₹[Price] — ⭐ 4.7\n\n3️⃣  *[Product C]*\n     ₹[Price] — ⭐ 4.8\n\n━━━━━━━━━━━━━━━━━━━━\n\n*🆕 New Arrivals*\n\n4️⃣  *[Product D]*\n     ₹[Price] — _Just Launched!_\n\n5️⃣  *[Product E]*\n     ₹[Price] — _Limited Edition_\n\n━━━━━━━━━━━━━━━━━━━━\n\n💬 _Reply with a number for details_\n📎 _Or reply *ALL* for full catalog PDF_`,
+  catalog: `📦 *Inverter Packages*\n━━━━━━━━━━━━━━━━━━━━\n\n⚡ Complete Home Power Solutions\n\n*🏠 Home Packages*\n\n1️⃣  *Basic Package*\n     850VA Inverter + 150Ah Battery\n     _₹[Price] — 2 Year Warranty_\n\n2️⃣  *Standard Package*\n     1100VA Inverter + 150Ah Battery\n     _₹[Price] — 2 Year Warranty_\n\n3️⃣  *Premium Package*\n     1500VA Inverter + 200Ah Battery\n     _₹[Price] — 3 Year Warranty_\n\n━━━━━━━━━━━━━━━━━━━━\n\n*☀️ Solar Packages*\n\n4️⃣  *1kW Solar System*\n     Panel + Inverter + Battery\n     _₹[Price] — 5 Year Warranty_\n\n5️⃣  *3kW Solar System*\n     Panel + Inverter + Battery\n     _₹[Price] — 5 Year Warranty_\n\n━━━━━━━━━━━━━━━━━━━━\n\n💬 _Reply with a number for details_\n📞 _Or call us for custom packages_`,
 
-  pricelist: `💰 *Price List*\n━━━━━━━━━━━━━━━━━━━━\n\n📅 Updated: [Date]\n\n┌─────────────────────\n│  Product          Price\n│  ─────────────────────\n│  [Product A]     ₹[Amt]\n│  [Product B]     ₹[Amt]\n│  [Product C]     ₹[Amt]\n│  [Product D]     ₹[Amt]\n│  [Product E]     ₹[Amt]\n└─────────────────────\n\n🏷️ *Bulk Discounts:*\n   • 5+ units:   *10% OFF*\n   • 10+ units: *15% OFF*\n   • 20+ units: *20% OFF*\n\n📞 For custom quotes, reply *QUOTE*\n\n━━━━━━━━━━━━━━━━━━━━\n_Prices inclusive of GST_ ✅`
+  pricelist: `💰 *Inverter Price List*\n━━━━━━━━━━━━━━━━━━━━\n\n📅 Updated: [Date]\n\n*⚡ Inverters*\n┌─────────────────────\n│  Model           Price\n│  ─────────────────────\n│  850VA            ₹[Amt]\n│  1100VA          ₹[Amt]\n│  1500VA          ₹[Amt]\n│  2000VA          ₹[Amt]\n│  2500VA          ₹[Amt]\n│  3500VA          ₹[Amt]\n└─────────────────────\n\n*🔋 Batteries*\n┌─────────────────────\n│  Type             Price\n│  ─────────────────────\n│  100Ah Flat       ₹[Amt]\n│  150Ah Flat       ₹[Amt]\n│  150Ah Tubular   ₹[Amt]\n│  200Ah Tubular   ₹[Amt]\n│  200Ah Tall Tub  ₹[Amt]\n└─────────────────────\n\n🏷️ *Exchange Offer:*\n   Old battery exchange discount\n   available on all models!\n\n📞 Reply *QUOTE* for best price\n\n━━━━━━━━━━━━━━━━━━━━\n_All prices inclusive of GST_ ✅`,
+
+  batterylist: `🔋 *Battery Price List*\n━━━━━━━━━━━━━━━━━━━━\n\n📅 Updated: [Date]\n\n*🔋 Flat Plate Batteries*\n┌─────────────────────\n│  100Ah      ₹[Amt]   (2yr)\n│  130Ah      ₹[Amt]   (2yr)\n│  150Ah      ₹[Amt]   (2yr)\n└─────────────────────\n\n*🔋 Tubular Batteries*\n┌─────────────────────\n│  150Ah      ₹[Amt]   (3yr)\n│  180Ah      ₹[Amt]   (3yr)\n│  200Ah      ₹[Amt]   (3yr)\n└─────────────────────\n\n*🔋 Tall Tubular*\n┌─────────────────────\n│  150Ah      ₹[Amt]   (4yr)\n│  200Ah      ₹[Amt]   (5yr)\n│  220Ah      ₹[Amt]   (5yr)\n└─────────────────────\n\n♻️ *Exchange Available:*\n   Flat discount on old battery return\n\n━━━━━━━━━━━━━━━━━━━━\n_Installation included_ 🔧`,
+
+  solarpkg: `☀️ *Solar Panel Package*\n━━━━━━━━━━━━━━━━━━━━\n\n🌞 *[X] kW On-Grid / Off-Grid System*\n\n┌─────────────────────\n│  ☀️  *Panels:*      [X] × [W]W\n│  ⚡  *Inverter:*    [Brand] [kW]\n│  🔋  *Battery:*     [X] × [Ah]\n│  📐  *Structure:*   GI / Aluminium\n│  🔌  *Wiring:*      Included\n│  💰  *Total:*       *₹[Amount]*\n└─────────────────────\n\n✅ *What You Get:*\n   • Complete installation\n   • Net metering assistance\n   • 25 year panel warranty\n   • 5 year inverter warranty\n   • 1 year free maintenance\n\n💡 *Monthly Savings:*\n   Save approx ₹[X] on electricity!\n\n📞 Reply *SITE VISIT* for\n   free inspection & custom quote\n\n━━━━━━━━━━━━━━━━━━━━\n_Government subsidy may apply_ 🏛️`,
+
+  service: `🔧 *AMC / Service Plan*\n━━━━━━━━━━━━━━━━━━━━\n\n🛡️ _Annual Maintenance Contract_\n\n*What's Covered:*\n   • Quarterly preventive visits\n   • Battery water top-up\n   • Terminal cleaning & greasing\n   • Performance check & testing\n   • Priority breakdown support\n\n┌─────────────────────\n│  *📋 Plans:*\n│\n│  Basic:      ₹[Amt]/year\n│  _2 visits + breakdown support_\n│\n│  Standard:  ₹[Amt]/year\n│  _4 visits + priority support_\n│\n│  Premium:   ₹[Amt]/year\n│  _4 visits + free parts + 24/7_\n└─────────────────────\n\n📞 Reply *AMC* to subscribe\n\n━━━━━━━━━━━━━━━━━━━━\n_Protect your investment_ ⚡`
 };
+
 
 function insertTemplate(type) {
   const ta = document.getElementById('reply-text');
