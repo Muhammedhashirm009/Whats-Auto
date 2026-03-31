@@ -97,6 +97,7 @@ func StartClient() {
 			return
 		}
 		go func() {
+			loggedIn := false
 			for evt := range qrChan {
 				if evt.Event == "code" {
 					QRMutex.Lock()
@@ -110,8 +111,19 @@ func StartClient() {
 						QRMutex.Lock()
 						CurrentQR = ""
 						QRMutex.Unlock()
+						loggedIn = true
 					}
 				}
+			}
+			// QR channel closed — if not logged in, retry after a short delay
+			if !loggedIn {
+				log.Println("QR code expired without scan. Retrying in 5 seconds...")
+				QRMutex.Lock()
+				CurrentQR = ""
+				QRMutex.Unlock()
+				client.Disconnect()
+				time.Sleep(5 * time.Second)
+				StartClient()
 			}
 		}()
 	} else {
